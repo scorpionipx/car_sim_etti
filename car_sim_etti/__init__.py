@@ -1,3 +1,44 @@
 import logging
+import os
+from time import gmtime, strftime
+
+from .version import __version__
 
 
+APP_NAME = 'CarSim ETTI'
+APP_SLUG = 'car_sim_etti'
+
+
+STATION = os.environ['COMPUTERNAME']
+USER = os.getlogin()
+
+CURRENT_DIR = os.path.dirname(__file__)
+LOG_DIR = os.path.join(CURRENT_DIR, 'logs')
+
+try:
+    os.makedirs(LOG_DIR)
+except Exception as err:
+    print(err)
+
+
+logger = logging.getLogger(APP_SLUG)
+
+log_formatter = logging.Formatter('%(message)s')
+log_file_name = '{}_{}.log'.format(APP_SLUG, strftime("%Y_%m_%d_%H_%M_%S", gmtime()))
+log_file = os.path.join(LOG_DIR, log_file_name)
+
+file_output = logging.FileHandler(log_file)
+file_output.setFormatter(log_formatter)
+file_output.setLevel(logging.INFO)
+logger.addHandler(file_output)
+
+console = logging.StreamHandler()
+console.setFormatter(log_formatter)
+logger.addHandler(console)
+
+logger.setLevel(logging.DEBUG)
+
+logger.info('{} v {}'.format(APP_NAME, __version__))
+logger.info('Log file: {}'.format(log_file))
+logger.info('STATION: {}'.format(STATION))
+logger.info('USER: {}'.format(USER))

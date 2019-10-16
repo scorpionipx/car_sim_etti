@@ -1,10 +1,14 @@
+import logging
 import sys
 
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QApplication, QMainWindow
 
 
-from car_sim_etti import settings
+from car_sim_etti import settings, APP_SLUG
+
+
+LOGGER = logging.getLogger(APP_SLUG)
 
 
 class CarSimETTI(QMainWindow):
@@ -17,7 +21,7 @@ class CarSimETTI(QMainWindow):
         self.init_gui()
 
     def button_clicked(self):
-        print("clicked")
+        LOGGER.info('Clicked!')
 
     def init_gui(self):
         self.setGeometry(100, 200, settings.WINDOW_WIDTH, settings.WINDOW_HEIGHT)
