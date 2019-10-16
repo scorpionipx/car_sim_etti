@@ -1,3 +1,4 @@
 .idea/
 venv/
 *.pyc
+car_sim_etti/logs/
