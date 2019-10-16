@@ -16,14 +16,15 @@ CURRENT_DIR = os.path.dirname(__file__)
 LOG_DIR = os.path.join(CURRENT_DIR, 'logs')
 
 try:
-    os.makedirs(LOG_DIR)
+    if not os.path.exists(LOG_DIR):
+        os.makedirs(LOG_DIR)
 except Exception as err:
     print(err)
 
 
 logger = logging.getLogger(APP_SLUG)
 
-log_formatter = logging.Formatter('%(message)s')
+log_formatter = logging.Formatter('%(asctime)s: %(message)s', '%d-%b-%Y %H:%M:%S')
 log_file_name = '{}_{}.log'.format(APP_SLUG, strftime("%Y_%m_%d_%H_%M_%S", gmtime()))
 log_file = os.path.join(LOG_DIR, log_file_name)
 
