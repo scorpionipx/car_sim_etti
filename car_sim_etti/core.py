@@ -15,16 +15,20 @@ from car_sim_etti import settings, APP_SLUG
 from car_sim_etti.utils.generic import (
     NOT_AVAILABLE,
 
+    SIGNAL_SAMPLING_PERIOD,
+
     SIGNAL_FL_VEL,
     SIGNAL_FR_VEL,
     SIGNAL_RL_VEL,
     SIGNAL_RR_VEL,
+
     SIGNAL_FL_PRES,
     SIGNAL_FR_PRES,
     SIGNAL_RL_PRES,
     SIGNAL_RR_PRES,
 
     sim_profile_valid,
+    __get_fps_growth__,
 )
 
 
@@ -53,6 +57,7 @@ class CarSimETTI(QMainWindow):
         # widgets generic
         self.load_sim_profile_button = None
         self.start_sim_profile_button = None
+        self.time_base_combo_box = None
         
         # widgets simulation
         self.fl_vel_label = None
@@ -69,10 +74,15 @@ class CarSimETTI(QMainWindow):
         self.fr_pres_pbar = None
         self.rl_pres_pbar = None
         self.rr_pres_pbar = None
-        
+
+        self.simulation_profile = None
         self.simulation_running = False
         self.simulation_index = 0
+        self.simulation_index_growth = -1
         self.simulation_stamps = -1
+        self.simulation_time_base = 1
+        self.simulation_fps = -1
+        self.simulation_period = -1
 
         self.__fps_task_started__ = False
         self.__stop_fps_task__ = False
@@ -141,25 +151,27 @@ class CarSimETTI(QMainWindow):
             LOGGER.error(error)
             return False
 
+        self.simulation_profile = sim_profile
+        del sim_profile
+
+        self.simulation_index_growth = 2
+        self.simulation_period = 0.04
+
         self.__reset_simulation_signals__()
 
-        self.fl_vel = sim_profile[SIGNAL_FL_VEL]
-        self.fr_vel = sim_profile[SIGNAL_FR_VEL]
-        self.rl_vel = sim_profile[SIGNAL_RL_VEL]
-        self.rr_vel = sim_profile[SIGNAL_RR_VEL]
+        self.fl_vel = self.simulation_profile[SIGNAL_FL_VEL]
+        self.fr_vel = self.simulation_profile[SIGNAL_FR_VEL]
+        self.rl_vel = self.simulation_profile[SIGNAL_RL_VEL]
+        self.rr_vel = self.simulation_profile[SIGNAL_RR_VEL]
 
-        self.fl_pres = sim_profile[SIGNAL_FL_PRES]
-        self.fr_pres = sim_profile[SIGNAL_FR_PRES]
-        self.rl_pres = sim_profile[SIGNAL_RL_PRES]
-        self.rr_pres = sim_profile[SIGNAL_RR_PRES]
-        
+        self.fl_pres = self.simulation_profile[SIGNAL_FL_PRES]
+        self.fr_pres = self.simulation_profile[SIGNAL_FR_PRES]
+        self.rl_pres = self.simulation_profile[SIGNAL_RL_PRES]
+        self.rr_pres = self.simulation_profile[SIGNAL_RR_PRES]
+
         self.simulation_stamps = len(self.fl_vel)
 
         LOGGER.info('Simulation profile successfully loaded!')
-
-        task_thread = threading.Thread(target=self.__fps_task__)
-        task_thread.start()
-
         return True
 
     def __get_file__(self):
@@ -195,6 +207,15 @@ class CarSimETTI(QMainWindow):
         self.start_sim_profile_button.clicked.connect(self.run_simulation_profile)
         self.start_sim_profile_button.move(250, 10)
         self.start_sim_profile_button.show()
+
+        self.time_base_combo_box = QtWidgets.QComboBox(self)
+        self.time_base_combo_box.addItem('1x')
+        self.time_base_combo_box.addItem('0.5x')
+        self.time_base_combo_box.addItem('0.25x')
+        self.time_base_combo_box.addItem('0.1x')
+        self.time_base_combo_box.move(210, 210)
+        self.time_base_combo_box.show()
+        self.time_base_combo_box.currentTextChanged.connect(self.update_time_base)
 
         self.fl_vel_label = QtWidgets.QLabel(self)
         self.fl_vel_label.setText(NOT_AVAILABLE)
@@ -268,14 +289,39 @@ class CarSimETTI(QMainWindow):
         self.rr_pres_pbar.move(settings.RR_PRES_PBAR_X, settings.RR_PRES_PBAR_Y)
         self.rr_pres_pbar.show()
 
+    def update_time_base(self, value):
+        self.simulation_time_base = float(value.replace('x', ''))
+        LOGGER.info('Changed simulation time base to {}'.format(self.simulation_time_base))
+
     def run_simulation_profile(self):
         """
         
         :return: 
         """
+
+        if not self.simulation_profile:
+            LOGGER.info('No simulation profile loaded!')
+            return
+
+        sampling_period = self.simulation_profile[SIGNAL_SAMPLING_PERIOD]
+        fps, growth = __get_fps_growth__(sampling_period, self.simulation_time_base)
+
+        self.simulation_period = 1 / fps
+        self.simulation_index_growth = growth
+
+        LOGGER.info('Simulation period: {}\nSimulation index growth: {}'
+                    .format(self.simulation_period, self.simulation_index_growth))
+
         self.simulation_index = 0
         self.simulation_running = True
 
+        self.__stop_fps_task__ = False
+        self.start_sim_profile_button.setEnabled(False)
+
+        sleep(.5)
+        task_thread = threading.Thread(target=self.__fps_task__)
+
+        task_thread.start()
         LOGGER.info('Started simulation!')
     
     def __update_simulation_velocity__(self):
@@ -313,16 +359,23 @@ class CarSimETTI(QMainWindow):
         """
         self.__fps_task_started__ = True
         LOGGER.info('__fps_task__ started!')
+        stop_sim_signal = False
         while not self.__stop_fps_task__:
-            sleep(1 / settings.FPS)
+            sleep(self.simulation_period)
             if self.simulation_running:
                 self.__update_simulation_velocity__()
                 self.__update_simulation_pressure__()
-                self.simulation_index += 1
+                if stop_sim_signal:
+                    self.simulation_running = False
+                    self.__stop_fps_task__ = True
+                    self.start_sim_profile_button.setEnabled(True)
+                    LOGGER.info('Stopped simulation!')
+
+                self.simulation_index += self.simulation_index_growth
                 
                 if self.simulation_index >= self.simulation_stamps:
-                    self.simulation_running = False
-                    LOGGER.info('Stopped simulation!')
+                    self.simulation_index = - 1
+                    stop_sim_signal = True
                 
         self.__fps_task_started__ = False
         LOGGER.info('__fps_task__ stopped!')
@@ -331,12 +384,16 @@ class CarSimETTI(QMainWindow):
 
         reply = QtWidgets.QMessageBox.question(self, 'Exit', "Are you sure?", QtWidgets.QMessageBox.Yes |
                                                QtWidgets.QMessageBox.No, QtWidgets.QMessageBox.No)
-
         if reply == QtWidgets.QMessageBox.Yes:
             self.__stop_fps_task__ = True
-            if self.__fps_task_started__:
-                sleep(2 * (1 / settings.FPS))
 
+            counter = 0
+            period = 0.01
+            while self.__fps_task_started__:
+                sleep(period)
+                counter += period
+                if counter >= 3:
+                    break
             event.accept()
         else:
             event.ignore()
