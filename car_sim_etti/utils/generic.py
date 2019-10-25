@@ -8,6 +8,8 @@ LOGGER = logging.getLogger(APP_SLUG)
 
 NOT_AVAILABLE = 'N/A'
 
+SIGNAL_ABS_REF = 'abs_ref'
+
 SIGNAL_FL_VEL = 'fl_vel'
 SIGNAL_FR_VEL = 'fr_vel'
 SIGNAL_RL_VEL = 'rl_vel'
@@ -52,6 +54,33 @@ def sim_profile_valid(profile):
                     .format(SIGNAL_SAMPLING_PERIOD, ALLOWED_SAMPLING_PERIODS, sampling_period)
                 LOGGER.error(error)
                 validation = False
+
+    signal_name = SIGNAL_ABS_REF
+    abs_ref = profile.get(signal_name, None)
+    signal = abs_ref
+    if signal is None:
+        error = 'Signal <{}> not defined within simulation profile!'.format(signal_name)
+        LOGGER.error(error)
+        validation = False
+    else:
+        if not isinstance(signal, list):
+            error = 'Signal <{}> type list expected! Got {} instead!'\
+                .format(signal_name, type(signal))
+            LOGGER.error(error)
+            validation = False
+        else:
+            for index, value in enumerate(signal):
+                if not isinstance(value, int) and not isinstance(value, float):
+                    error = 'Signal <{}> value type int or float expected! Got {} at index {}!'\
+                        .format(signal_name, type(value), index)
+                    LOGGER.error(error)
+                    validation = False
+                else:
+                    if value < 0:
+                        error = 'Signal <{}> value expected to be greater than 0! Got {} instead at index {}!'\
+                            .format(signal_name, value, index)
+                        LOGGER.error(error)
+                        validation = False
 
     signal_name = SIGNAL_FL_VEL
     fl_vel = profile.get(signal_name, None)
@@ -269,11 +298,15 @@ def sim_profile_valid(profile):
                         LOGGER.error(error)
                         validation = False
 
+    if not validation:
+        return False
+
     if len(fl_vel) == len(fr_vel) == len(rl_vel) == len(rr_vel) == len(fl_pres) == len(fr_pres) == len(rl_pres) \
-            == len(rr_pres):
+            == len(rr_pres) == len(abs_ref):
         pass
     else:
         error = 'Simulation signals length miss match!\n'
+        error += '{}: {} entries\n'.format(SIGNAL_ABS_REF, len(abs_ref))
         error += '{}: {} entries\n'.format(SIGNAL_FL_VEL, len(fl_vel))
         error += '{}: {} entries\n'.format(SIGNAL_FR_VEL, len(fr_vel))
         error += '{}: {} entries\n'.format(SIGNAL_RL_VEL, len(rl_vel))

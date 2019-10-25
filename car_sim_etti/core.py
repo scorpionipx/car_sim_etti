@@ -12,10 +12,13 @@ from PyQt5.QtCore import Qt
 
 
 from car_sim_etti import settings, APP_SLUG
+from car_sim_etti.utils.gauge import AnalogGaugeWidget
 from car_sim_etti.utils.generic import (
     NOT_AVAILABLE,
 
     SIGNAL_SAMPLING_PERIOD,
+
+    SIGNAL_ABS_REF,
 
     SIGNAL_FL_VEL,
     SIGNAL_FR_VEL,
@@ -31,7 +34,6 @@ from car_sim_etti.utils.generic import (
     __get_fps_growth__,
 )
 
-
 LOGGER = logging.getLogger(APP_SLUG)
 
 
@@ -43,6 +45,8 @@ class CarSimETTI(QMainWindow):
         super(CarSimETTI, self).__init__()
 
         # simulation signals
+        self.abs_ref = []
+
         self.fl_vel = []
         self.fr_vel = []
         self.rl_vel = []
@@ -75,6 +79,10 @@ class CarSimETTI(QMainWindow):
         self.rl_pres_pbar = None
         self.rr_pres_pbar = None
 
+        self.speed_gauge = None
+
+        self.simulation_progress_label = None
+
         self.simulation_profile = None
         self.simulation_running = False
         self.simulation_index = 0
@@ -95,6 +103,8 @@ class CarSimETTI(QMainWindow):
             Remove values from simulation signals.
         :return: None
         """
+        del self.abs_ref
+
         del self.fl_vel
         del self.fr_vel
         del self.rl_vel
@@ -104,6 +114,8 @@ class CarSimETTI(QMainWindow):
         del self.fr_pres
         del self.rl_pres
         del self.rr_pres
+
+        self.abs_ref = []
 
         self.fl_vel = []
         self.fr_vel = []
@@ -158,6 +170,8 @@ class CarSimETTI(QMainWindow):
         self.simulation_period = 0.04
 
         self.__reset_simulation_signals__()
+
+        self.abs_ref = self.simulation_profile[SIGNAL_ABS_REF]
 
         self.fl_vel = self.simulation_profile[SIGNAL_FL_VEL]
         self.fr_vel = self.simulation_profile[SIGNAL_FR_VEL]
@@ -258,14 +272,18 @@ class CarSimETTI(QMainWindow):
         self.rr_pres_label.show()
 
         self.fl_pres_pbar = QtWidgets.QProgressBar(self)
+        self.fl_pres_pbar.setGeometry(50, 50, 20, 100)
         self.fl_pres_pbar.setOrientation(Qt.Vertical)
         self.fl_pres_pbar.setMinimum(settings.PRES_PBAR_MIN)
         self.fl_pres_pbar.setMaximum(settings.PRES_PBAR_MAX)
         self.fl_pres_pbar.setValue(settings.PRES_PBAR_MIN)
         self.fl_pres_pbar.move(settings.FL_PRES_PBAR_X, settings.FL_PRES_PBAR_Y)
+        self.fl_pres_pbar.setValue(15)
+        self.fl_pres_pbar.setValue(125)
         self.fl_pres_pbar.show()
 
         self.fr_pres_pbar = QtWidgets.QProgressBar(self)
+        self.fr_pres_pbar.setGeometry(50, 50, 20, 100)
         self.fr_pres_pbar.setOrientation(Qt.Vertical)
         self.fr_pres_pbar.setMinimum(settings.PRES_PBAR_MIN)
         self.fr_pres_pbar.setMaximum(settings.PRES_PBAR_MAX)
@@ -274,6 +292,7 @@ class CarSimETTI(QMainWindow):
         self.fr_pres_pbar.show()
 
         self.rl_pres_pbar = QtWidgets.QProgressBar(self)
+        self.rl_pres_pbar.setGeometry(50, 50, 20, 100)
         self.rl_pres_pbar.setOrientation(Qt.Vertical)
         self.rl_pres_pbar.setMinimum(settings.PRES_PBAR_MIN)
         self.rl_pres_pbar.setMaximum(settings.PRES_PBAR_MAX)
@@ -282,12 +301,25 @@ class CarSimETTI(QMainWindow):
         self.rl_pres_pbar.show()
 
         self.rr_pres_pbar = QtWidgets.QProgressBar(self)
+        self.rr_pres_pbar.setGeometry(50, 50, 20, 100)
         self.rr_pres_pbar.setOrientation(Qt.Vertical)
         self.rr_pres_pbar.setMinimum(settings.PRES_PBAR_MIN)
         self.rr_pres_pbar.setMaximum(settings.PRES_PBAR_MAX)
         self.rr_pres_pbar.setValue(settings.PRES_PBAR_MIN)
         self.rr_pres_pbar.move(settings.RR_PRES_PBAR_X, settings.RR_PRES_PBAR_Y)
         self.rr_pres_pbar.show()
+
+        self.speed_gauge = AnalogGaugeWidget(self)
+        self.speed_gauge.set_MinValue(0)
+        self.speed_gauge.set_MaxValue(220)
+        self.speed_gauge.resize(200, 200)
+        self.speed_gauge.move(420, 120)
+        self.speed_gauge.show()
+
+        self.simulation_progress_label = QtWidgets.QLabel(self)
+        self.simulation_progress_label.setText('~')
+        self.simulation_progress_label.move(10, 10)
+        self.simulation_progress_label.show()
 
     def update_time_base(self, value):
         self.simulation_time_base = float(value.replace('x', ''))
@@ -329,28 +361,30 @@ class CarSimETTI(QMainWindow):
         
         :return: 
         """
-        self.fl_vel_label.setText('{}'.format(self.fl_vel[self.simulation_index]))
-        self.fr_vel_label.setText('{}'.format(self.fr_vel[self.simulation_index]))
-        self.rl_vel_label.setText('{}'.format(self.rl_vel[self.simulation_index]))
-        self.rr_vel_label.setText('{}'.format(self.rr_vel[self.simulation_index]))
+        self.fl_vel_label.setText('{0:.2f}'.format(self.fl_vel[self.simulation_index]))
+        self.fr_vel_label.setText('{0:.2f}'.format(self.fr_vel[self.simulation_index]))
+        self.rl_vel_label.setText('{0:.2f}'.format(self.rl_vel[self.simulation_index]))
+        self.rr_vel_label.setText('{0:.2f}'.format(self.rr_vel[self.simulation_index]))
+
+        self.speed_gauge.update_value(self.abs_ref[self.simulation_index])
     
     def __update_simulation_pressure__(self):
         """
         
         :return: 
         """
-        self.fl_pres_label.setText('{}'.format(self.fl_pres[self.simulation_index]))
-        self.fr_pres_label.setText('{}'.format(self.fr_pres[self.simulation_index]))
-        self.rl_pres_label.setText('{}'.format(self.rl_pres[self.simulation_index]))
-        self.rr_pres_label.setText('{}'.format(self.rr_pres[self.simulation_index]))
+        self.fl_pres_label.setText('{0:.2f}'.format(self.fl_pres[self.simulation_index]))
+        self.fr_pres_label.setText('{0:.2f}'.format(self.fr_pres[self.simulation_index]))
+        self.rl_pres_label.setText('{0:.2f}'.format(self.rl_pres[self.simulation_index]))
+        self.rr_pres_label.setText('{0:.2f}'.format(self.rr_pres[self.simulation_index]))
 
-        # try:
-        #     self.fl_pres_pbar.setValue(int(self.fl_pres[self.simulation_index]))
-        #     self.fr_pres_pbar.setValue(int(self.fr_pres[self.simulation_index]))
-        #     self.rl_pres_pbar.setValue(int(self.rl_pres[self.simulation_index]))
-        #     self.rr_pres_pbar.setValue(int(self.rr_pres[self.simulation_index]))
-        # except Exception as err:
-        #     LOGGER.error(err)
+        try:
+            pass
+            self.fr_pres_pbar.setValue(int(self.fr_pres[self.simulation_index]))
+            # self.rl_pres_pbar.setValue(int(self.rl_pres[self.simulation_index]))
+            # self.rr_pres_pbar.setValue(int(self.rr_pres[self.simulation_index]))
+        except Exception as err:
+            LOGGER.error(err)
 
     def __fps_task__(self):
         """
@@ -360,11 +394,21 @@ class CarSimETTI(QMainWindow):
         self.__fps_task_started__ = True
         LOGGER.info('__fps_task__ started!')
         stop_sim_signal = False
+        sim_progress = -1
+        old_simulation_progress = -1
         while not self.__stop_fps_task__:
             sleep(self.simulation_period)
             if self.simulation_running:
+
+                sim_progress = int((self.simulation_index * 100) / self.simulation_stamps)
+
                 self.__update_simulation_velocity__()
                 self.__update_simulation_pressure__()
+
+                if sim_progress != old_simulation_progress:
+                    self.simulation_progress_label.setText('{}%'.format(sim_progress))
+                    old_simulation_progress = sim_progress
+
                 if stop_sim_signal:
                     self.simulation_running = False
                     self.__stop_fps_task__ = True
