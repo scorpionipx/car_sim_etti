@@ -1,10 +1,16 @@
 import logging
+import os.path as py_path
 
 
 from car_sim_etti import APP_SLUG
 
 
 LOGGER = logging.getLogger(APP_SLUG)
+
+
+CURRENT_DIR = py_path.dirname(__file__)
+STATIC_DIR = py_path.join(CURRENT_DIR, 'static')
+IMAGES_DIR = py_path.join(STATIC_DIR, 'images')
 
 NOT_AVAILABLE = 'N/A'
 
@@ -24,6 +30,8 @@ SIGNAL_SAMPLING_PERIOD = 'sampling_period'
 
 ALLOWED_SAMPLING_PERIODS = (0.001, 0.01, 0.1, 1, 2)
 FPS = {0.001: 24, 0.001: 24, 0.001: 24, 0.001: 24, 0.001: 24, 0.001: 24}
+
+BRAKING_SYSTEM_OVERVIEW_IMG = py_path.join(IMAGES_DIR, 'braking_system_overview.png')
 
 
 def sim_profile_valid(profile):

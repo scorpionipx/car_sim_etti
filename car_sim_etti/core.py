@@ -3,12 +3,12 @@ import logging
 import sys
 import threading
 
-from time import sleep
+from time import sleep, time as now
 
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QApplication, QMainWindow
-from PyQt5.QtGui import QIcon
-from PyQt5.QtCore import Qt
+from PyQt5.QtGui import QIcon, QPixmap
+from PyQt5.QtCore import Qt, QThread, pyqtSignal
 
 
 from car_sim_etti import settings, APP_SLUG
@@ -37,6 +37,49 @@ from car_sim_etti.utils.generic import (
 LOGGER = logging.getLogger(APP_SLUG)
 
 
+SIMULATION_THREAD_TIMEOUT = 300  # seconds, same as 5 minutes
+
+
+class SimulationThread(QThread):
+    """SimulationThread
+
+    """
+    counted = pyqtSignal(int)
+    running = False
+    stop_sim_signal = False
+
+    def __init__(self, period=.01):
+        super(SimulationThread, self).__init__()
+        self.period = period
+
+    def run(self):
+
+        count = 0
+        loop_index = 0
+        LOGGER.info('Simulation thread started!')
+        self.running = True
+        start = now()
+        while count < SIMULATION_THREAD_TIMEOUT:
+
+            if self.stop_sim_signal:
+                end = now()
+                LOGGER.info('Simulation thread stopped! {}s'.format(end - start))
+                self.running = False
+                sleep(1)
+                break
+
+            count += self.period
+            self.counted.emit(loop_index)
+            loop_index += 1
+
+            sleep(self.period)
+
+        if not self.stop_sim_signal:
+            end = now()
+            LOGGER.info('Simulation thread stopped after timeout [{}] reached! {}s'
+                        .format(SIMULATION_THREAD_TIMEOUT, end - start))
+
+
 class CarSimETTI(QMainWindow):
     """
 
@@ -61,6 +104,7 @@ class CarSimETTI(QMainWindow):
         # widgets generic
         self.load_sim_profile_button = None
         self.start_sim_profile_button = None
+        self.stop_sim_profile_button = None
         self.time_base_combo_box = None
         
         # widgets simulation
@@ -82,7 +126,10 @@ class CarSimETTI(QMainWindow):
         self.speed_gauge = None
 
         self.simulation_progress_label = None
+        self.simulation_progress = -1
+        self.simulation_progress_old = -1
 
+        self.simulation_thread = None
         self.simulation_profile = None
         self.simulation_running = False
         self.simulation_index = 0
@@ -91,6 +138,7 @@ class CarSimETTI(QMainWindow):
         self.simulation_time_base = 1
         self.simulation_fps = -1
         self.simulation_period = -1
+        self.stop_sim_signal = False
 
         self.__fps_task_started__ = False
         self.__stop_fps_task__ = False
@@ -218,9 +266,17 @@ class CarSimETTI(QMainWindow):
         self.start_sim_profile_button = QtWidgets.QPushButton(self)
         self.start_sim_profile_button.setText('Start sim profile')
         # noinspection PyTypeChecker
-        self.start_sim_profile_button.clicked.connect(self.run_simulation_profile)
+        self.start_sim_profile_button.clicked.connect(self.start_simulation)
         self.start_sim_profile_button.move(250, 10)
         self.start_sim_profile_button.show()
+
+        self.stop_sim_profile_button = QtWidgets.QPushButton(self)
+        self.stop_sim_profile_button.setText('Stop sim')
+        # noinspection PyTypeChecker
+        self.stop_sim_profile_button.clicked.connect(self.stop_simulation)
+        self.stop_sim_profile_button.move(250, 50)
+        self.stop_sim_profile_button.setEnabled(False)
+        self.stop_sim_profile_button.show()
 
         self.time_base_combo_box = QtWidgets.QComboBox(self)
         self.time_base_combo_box.addItem('1x')
@@ -278,8 +334,6 @@ class CarSimETTI(QMainWindow):
         self.fl_pres_pbar.setMaximum(settings.PRES_PBAR_MAX)
         self.fl_pres_pbar.setValue(settings.PRES_PBAR_MIN)
         self.fl_pres_pbar.move(settings.FL_PRES_PBAR_X, settings.FL_PRES_PBAR_Y)
-        self.fl_pres_pbar.setValue(15)
-        self.fl_pres_pbar.setValue(125)
         self.fl_pres_pbar.show()
 
         self.fr_pres_pbar = QtWidgets.QProgressBar(self)
@@ -311,7 +365,7 @@ class CarSimETTI(QMainWindow):
 
         self.speed_gauge = AnalogGaugeWidget(self)
         self.speed_gauge.set_MinValue(0)
-        self.speed_gauge.set_MaxValue(220)
+        self.speed_gauge.set_MaxValue(200)
         self.speed_gauge.resize(200, 200)
         self.speed_gauge.move(420, 120)
         self.speed_gauge.show()
@@ -321,9 +375,84 @@ class CarSimETTI(QMainWindow):
         self.simulation_progress_label.move(10, 10)
         self.simulation_progress_label.show()
 
+        braking_system_overview_pixmap = QPixmap
+        self.braking_system_overview_label = QtWidgets.QLabel(self)
+        self.braking_system_overview_label.setPixmap()
+
     def update_time_base(self, value):
         self.simulation_time_base = float(value.replace('x', ''))
         LOGGER.info('Changed simulation time base to {}'.format(self.simulation_time_base))
+
+    def on_thread_counter(self, index):
+        self.simulation_index += self.simulation_index_growth
+
+        self.simulation_progress = int((self.simulation_index * 100) / self.simulation_stamps)
+
+        if self.simulation_progress != self.simulation_progress_old:
+            self.simulation_progress_label.setText('{}%'.format(self.simulation_progress))
+            self.simulation_progress_old = self.simulation_progress
+
+        if self.simulation_index > self.simulation_stamps - 1:
+            self.simulation_index = self.simulation_stamps - 1
+            self.simulation_thread.stop_sim_signal = True
+            self.start_sim_profile_button.setEnabled(True)
+            self.time_base_combo_box.setEnabled(True)
+            self.load_sim_profile_button.setEnabled(True)
+            self.stop_sim_profile_button.setEnabled(False)
+            LOGGER.info('Emitted simulation stop signal!')
+        else:
+            pass
+            self.__update_simulation_velocity__()
+            self.__update_simulation_pressure__()
+            self.__update_simulation_pressure_graphics__()
+
+    def start_simulation(self):
+        if not self.simulation_profile:
+            LOGGER.info('No simulation profile loaded!')
+            return
+
+        sampling_period = self.simulation_profile[SIGNAL_SAMPLING_PERIOD]
+        fps, growth = __get_fps_growth__(sampling_period, self.simulation_time_base)
+
+        self.simulation_period = 1 / fps
+        self.simulation_index_growth = growth
+
+        LOGGER.info('Simulation period: {}\nSimulation index growth: {}\nSimulation stamps: {}\n'
+                    .format(self.simulation_period, self.simulation_index_growth, self.simulation_stamps))
+
+        self.simulation_index = 0
+        self.simulation_running = True
+        self.simulation_progress = 0
+        self.simulation_progress_old = -1
+
+        self.simulation_thread = SimulationThread(period=self.simulation_period)
+        self.simulation_thread.counted.connect(self.on_thread_counter)
+        self.start_sim_profile_button.setEnabled(False)
+        self.time_base_combo_box.setEnabled(False)
+        self.load_sim_profile_button.setEnabled(False)
+        self.stop_sim_profile_button.setEnabled(True)
+        self.simulation_thread.start()
+
+    def stop_sim(self):
+        """
+
+        :return:
+        """
+        self.stop_sim_signal = True
+        self.fl_pres_pbar.setValue(self.fl_pres_pbar.value() + 1)
+
+    def stop_simulation(self):
+        """
+
+        :return:
+        """
+        self.simulation_thread.stop_sim_signal = True
+        self.start_sim_profile_button.setEnabled(True)
+        self.time_base_combo_box.setEnabled(True)
+        self.load_sim_profile_button.setEnabled(True)
+        self.stop_sim_profile_button.setEnabled(False)
+        sleep(.1)
+        LOGGER.info('Forced stopped simulation!')
 
     def run_simulation_profile(self):
         """
@@ -378,13 +507,15 @@ class CarSimETTI(QMainWindow):
         self.rl_pres_label.setText('{0:.2f}'.format(self.rl_pres[self.simulation_index]))
         self.rr_pres_label.setText('{0:.2f}'.format(self.rr_pres[self.simulation_index]))
 
-        try:
-            pass
-            self.fr_pres_pbar.setValue(int(self.fr_pres[self.simulation_index]))
-            # self.rl_pres_pbar.setValue(int(self.rl_pres[self.simulation_index]))
-            # self.rr_pres_pbar.setValue(int(self.rr_pres[self.simulation_index]))
-        except Exception as err:
-            LOGGER.error(err)
+    def __update_simulation_pressure_graphics__(self):
+        """
+
+        :return:
+        """
+        self.fl_pres_pbar.setValue(int(self.fl_pres[self.simulation_index]))
+        self.fr_pres_pbar.setValue(int(self.fr_pres[self.simulation_index]))
+        self.rl_pres_pbar.setValue(int(self.rl_pres[self.simulation_index]))
+        self.rr_pres_pbar.setValue(int(self.rr_pres[self.simulation_index]))
 
     def __fps_task__(self):
         """
@@ -393,7 +524,7 @@ class CarSimETTI(QMainWindow):
         """
         self.__fps_task_started__ = True
         LOGGER.info('__fps_task__ started!')
-        stop_sim_signal = False
+        self.stop_sim_signal = False
         sim_progress = -1
         old_simulation_progress = -1
         while not self.__stop_fps_task__:
@@ -404,12 +535,15 @@ class CarSimETTI(QMainWindow):
 
                 self.__update_simulation_velocity__()
                 self.__update_simulation_pressure__()
+                if self.simulation_index > 10:
+                    if self.simulation_index % 55 == 0:
+                        self.__update_simulation_pressure_graphics__()
 
                 if sim_progress != old_simulation_progress:
                     self.simulation_progress_label.setText('{}%'.format(sim_progress))
                     old_simulation_progress = sim_progress
 
-                if stop_sim_signal:
+                if self.stop_sim_signal:
                     self.simulation_running = False
                     self.__stop_fps_task__ = True
                     self.start_sim_profile_button.setEnabled(True)
@@ -419,7 +553,7 @@ class CarSimETTI(QMainWindow):
                 
                 if self.simulation_index >= self.simulation_stamps:
                     self.simulation_index = - 1
-                    stop_sim_signal = True
+                    self.stop_sim_signal = True
                 
         self.__fps_task_started__ = False
         LOGGER.info('__fps_task__ stopped!')
@@ -451,4 +585,5 @@ def run_application():
 
 
 if __name__ == '__main__':
+
     run_application()
