@@ -30,6 +30,8 @@ from car_sim_etti.utils.generic import (
     SIGNAL_RL_PRES,
     SIGNAL_RR_PRES,
 
+    BRAKING_SYSTEM_OVERVIEW_IMG,
+
     sim_profile_valid,
     __get_fps_growth__,
 )
@@ -124,6 +126,7 @@ class CarSimETTI(QMainWindow):
         self.rr_pres_pbar = None
 
         self.speed_gauge = None
+        self.braking_system_overview_label = None
 
         self.simulation_progress_label = None
         self.simulation_progress = -1
@@ -253,8 +256,10 @@ class CarSimETTI(QMainWindow):
 
     def init_gui(self):
         self.setGeometry(100, 200, settings.WINDOW_WIDTH, settings.WINDOW_HEIGHT)
+        self.setFixedSize(settings.WINDOW_WIDTH, settings.WINDOW_HEIGHT)
         self.setWindowTitle(settings.WINDOW_TITLE)
         self.setWindowIcon(QIcon(settings.WINDOWS_ICON_PATH))
+        self.setStyleSheet("QMainWindow {background: 'white';}")
 
         self.load_sim_profile_button = QtWidgets.QPushButton(self)
         self.load_sim_profile_button.setText('Load sim profile')
@@ -367,7 +372,7 @@ class CarSimETTI(QMainWindow):
         self.speed_gauge.set_MinValue(0)
         self.speed_gauge.set_MaxValue(200)
         self.speed_gauge.resize(200, 200)
-        self.speed_gauge.move(420, 120)
+        self.speed_gauge.move(540, 15)
         self.speed_gauge.show()
 
         self.simulation_progress_label = QtWidgets.QLabel(self)
@@ -375,9 +380,14 @@ class CarSimETTI(QMainWindow):
         self.simulation_progress_label.move(10, 10)
         self.simulation_progress_label.show()
 
-        braking_system_overview_pixmap = QPixmap
+        braking_system_overview_pixmap = QPixmap(BRAKING_SYSTEM_OVERVIEW_IMG)
         self.braking_system_overview_label = QtWidgets.QLabel(self)
-        self.braking_system_overview_label.setPixmap()
+        self.braking_system_overview_label.setPixmap(braking_system_overview_pixmap)
+        self.braking_system_overview_label.resize(
+            braking_system_overview_pixmap.width(), braking_system_overview_pixmap.height()
+        )
+        self.braking_system_overview_label.move(176, 250)
+        self.braking_system_overview_label.show()
 
     def update_time_base(self, value):
         self.simulation_time_base = float(value.replace('x', ''))

@@ -9,7 +9,7 @@ LOGGER = logging.getLogger(APP_SLUG)
 
 
 CURRENT_DIR = py_path.dirname(__file__)
-STATIC_DIR = py_path.join(CURRENT_DIR, 'static')
+STATIC_DIR = py_path.join(py_path.dirname(CURRENT_DIR), 'static')
 IMAGES_DIR = py_path.join(STATIC_DIR, 'images')
 
 NOT_AVAILABLE = 'N/A'
@@ -359,3 +359,5 @@ def __get_fps_growth__(sampling_period, time_base):
     return fps, growth
 
 
+if __name__ == '__main__':
+    LOGGER.info('{}'.format(BRAKING_SYSTEM_OVERVIEW_IMG))
