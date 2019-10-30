@@ -129,6 +129,7 @@ class CarSimETTI(QMainWindow):
         self.braking_system_overview_label = None
 
         self.simulation_progress_label = None
+        self.simulation_progress_pbar = None
         self.simulation_progress = -1
         self.simulation_progress_old = -1
 
@@ -288,49 +289,98 @@ class CarSimETTI(QMainWindow):
         self.time_base_combo_box.addItem('0.5x')
         self.time_base_combo_box.addItem('0.25x')
         self.time_base_combo_box.addItem('0.1x')
-        self.time_base_combo_box.move(210, 210)
+        self.time_base_combo_box.move(100, 50)
         self.time_base_combo_box.show()
         self.time_base_combo_box.currentTextChanged.connect(self.update_time_base)
+
+        braking_system_overview_pixmap = QPixmap(BRAKING_SYSTEM_OVERVIEW_IMG)
+        self.braking_system_overview_label = QtWidgets.QLabel(self)
+        self.braking_system_overview_label.setPixmap(braking_system_overview_pixmap)
+        self.braking_system_overview_label.resize(
+            braking_system_overview_pixmap.width(), braking_system_overview_pixmap.height()
+        )
+        self.braking_system_overview_label.move(176, 250)
+        self.braking_system_overview_label.show()
 
         self.fl_vel_label = QtWidgets.QLabel(self)
         self.fl_vel_label.setText(NOT_AVAILABLE)
         self.fl_vel_label.move(settings.FL_VEL_LABEL_X, settings.FL_VEL_LABEL_Y)
         self.fl_vel_label.show()
 
+        fl_vel_label_secondary = QtWidgets.QLabel(self)
+        fl_vel_label_secondary.setText('[km/h]')
+        fl_vel_label_secondary.move(settings.FL_VEL_LABEL_X, settings.FL_VEL_LABEL_Y + 15)
+        fl_vel_label_secondary.show()
+
         self.fr_vel_label = QtWidgets.QLabel(self)
         self.fr_vel_label.setText(NOT_AVAILABLE)
         self.fr_vel_label.move(settings.FR_VEL_LABEL_X, settings.FR_VEL_LABEL_Y)
         self.fr_vel_label.show()
+
+        fr_vel_label_secondary = QtWidgets.QLabel(self)
+        fr_vel_label_secondary.setText('[km/h]')
+        fr_vel_label_secondary.move(settings.FR_VEL_LABEL_X, settings.FR_VEL_LABEL_Y + 15)
+        fr_vel_label_secondary.show()
 
         self.rl_vel_label = QtWidgets.QLabel(self)
         self.rl_vel_label.setText(NOT_AVAILABLE)
         self.rl_vel_label.move(settings.RL_VEL_LABEL_X, settings.RL_VEL_LABEL_Y)
         self.rl_vel_label.show()
 
+        rl_vel_label_secondary = QtWidgets.QLabel(self)
+        rl_vel_label_secondary.setText('[km/h]')
+        rl_vel_label_secondary.move(settings.RL_VEL_LABEL_X, settings.RL_VEL_LABEL_Y + 15)
+        rl_vel_label_secondary.show()
+
         self.rr_vel_label = QtWidgets.QLabel(self)
         self.rr_vel_label.setText(NOT_AVAILABLE)
         self.rr_vel_label.move(settings.RR_VEL_LABEL_X, settings.RR_VEL_LABEL_Y)
         self.rr_vel_label.show()
+
+        rr_vel_label_secondary = QtWidgets.QLabel(self)
+        rr_vel_label_secondary.setText('[km/h]')
+        rr_vel_label_secondary.move(settings.RR_VEL_LABEL_X, settings.RR_VEL_LABEL_Y + 15)
+        rr_vel_label_secondary.show()
 
         self.fl_pres_label = QtWidgets.QLabel(self)
         self.fl_pres_label.setText(NOT_AVAILABLE)
         self.fl_pres_label.move(settings.FL_PRES_LABEL_X, settings.FL_PRES_LABEL_Y)
         self.fl_pres_label.show()
 
+        fl_pres_label_secondary = QtWidgets.QLabel(self)
+        fl_pres_label_secondary.setText('[bars]')
+        fl_pres_label_secondary.move(settings.FL_PRES_LABEL_X, settings.FL_PRES_LABEL_Y + 15)
+        fl_pres_label_secondary.show()
+
         self.fr_pres_label = QtWidgets.QLabel(self)
         self.fr_pres_label.setText(NOT_AVAILABLE)
         self.fr_pres_label.move(settings.FR_PRES_LABEL_X, settings.FR_PRES_LABEL_Y)
         self.fr_pres_label.show()
+
+        fr_pres_label_secondary = QtWidgets.QLabel(self)
+        fr_pres_label_secondary.setText('[bars]')
+        fr_pres_label_secondary.move(settings.FR_PRES_LABEL_X, settings.FR_PRES_LABEL_Y + 15)
+        fr_pres_label_secondary.show()
 
         self.rl_pres_label = QtWidgets.QLabel(self)
         self.rl_pres_label.setText(NOT_AVAILABLE)
         self.rl_pres_label.move(settings.RL_PRES_LABEL_X, settings.RL_PRES_LABEL_Y)
         self.rl_pres_label.show()
 
+        rl_pres_label_secondary = QtWidgets.QLabel(self)
+        rl_pres_label_secondary.setText('[bars]')
+        rl_pres_label_secondary.move(settings.RL_PRES_LABEL_X, settings.RL_PRES_LABEL_Y + 15)
+        rl_pres_label_secondary.show()
+
         self.rr_pres_label = QtWidgets.QLabel(self)
         self.rr_pres_label.setText(NOT_AVAILABLE)
         self.rr_pres_label.move(settings.RR_PRES_LABEL_X, settings.RR_PRES_LABEL_Y)
         self.rr_pres_label.show()
+
+        rr_pres_label_secondary = QtWidgets.QLabel(self)
+        rr_pres_label_secondary.setText('[bars]')
+        rr_pres_label_secondary.move(settings.RR_PRES_LABEL_X, settings.RR_PRES_LABEL_Y + 15)
+        rr_pres_label_secondary.show()
 
         self.fl_pres_pbar = QtWidgets.QProgressBar(self)
         self.fl_pres_pbar.setGeometry(50, 50, 20, 100)
@@ -380,14 +430,19 @@ class CarSimETTI(QMainWindow):
         self.simulation_progress_label.move(10, 10)
         self.simulation_progress_label.show()
 
-        braking_system_overview_pixmap = QPixmap(BRAKING_SYSTEM_OVERVIEW_IMG)
-        self.braking_system_overview_label = QtWidgets.QLabel(self)
-        self.braking_system_overview_label.setPixmap(braking_system_overview_pixmap)
-        self.braking_system_overview_label.resize(
-            braking_system_overview_pixmap.width(), braking_system_overview_pixmap.height()
-        )
-        self.braking_system_overview_label.move(176, 250)
-        self.braking_system_overview_label.show()
+        simulation_progress_label_secondary = QtWidgets.QLabel(self)
+        simulation_progress_label_secondary.setText('Simulation progress')
+        simulation_progress_label_secondary.move(100, 110)
+        simulation_progress_label_secondary.show()
+
+        self.simulation_progress_pbar = QtWidgets.QProgressBar(self)
+        self.simulation_progress_pbar.setGeometry(350, 10, 280, 20)
+        self.simulation_progress_pbar.setOrientation(Qt.Horizontal)
+        self.simulation_progress_pbar.setMinimum(0)
+        self.simulation_progress_pbar.setMaximum(100)
+        self.simulation_progress_pbar.setValue(0)
+        self.simulation_progress_pbar.move(100, 140)
+        self.simulation_progress_pbar.show()
 
     def update_time_base(self, value):
         self.simulation_time_base = float(value.replace('x', ''))
@@ -399,8 +454,9 @@ class CarSimETTI(QMainWindow):
         self.simulation_progress = int((self.simulation_index * 100) / self.simulation_stamps)
 
         if self.simulation_progress != self.simulation_progress_old:
-            self.simulation_progress_label.setText('{}%'.format(self.simulation_progress))
+            # self.simulation_progress_label.setText('{}%'.format(self.simulation_progress))
             self.simulation_progress_old = self.simulation_progress
+            self.simulation_progress_pbar.setValue(self.simulation_progress)
 
         if self.simulation_index > self.simulation_stamps - 1:
             self.simulation_index = self.simulation_stamps - 1
@@ -500,10 +556,10 @@ class CarSimETTI(QMainWindow):
         
         :return: 
         """
-        self.fl_vel_label.setText('{0:.2f}'.format(self.fl_vel[self.simulation_index]))
-        self.fr_vel_label.setText('{0:.2f}'.format(self.fr_vel[self.simulation_index]))
-        self.rl_vel_label.setText('{0:.2f}'.format(self.rl_vel[self.simulation_index]))
-        self.rr_vel_label.setText('{0:.2f}'.format(self.rr_vel[self.simulation_index]))
+        self.fl_vel_label.setText('{}'.format(self.fl_vel[self.simulation_index]))
+        self.fr_vel_label.setText('{}'.format(self.fr_vel[self.simulation_index]))
+        self.rl_vel_label.setText('{}'.format(self.rl_vel[self.simulation_index]))
+        self.rr_vel_label.setText('{}'.format(self.rr_vel[self.simulation_index]))
 
         self.speed_gauge.update_value(self.abs_ref[self.simulation_index])
     
@@ -512,10 +568,10 @@ class CarSimETTI(QMainWindow):
         
         :return: 
         """
-        self.fl_pres_label.setText('{0:.2f}'.format(self.fl_pres[self.simulation_index]))
-        self.fr_pres_label.setText('{0:.2f}'.format(self.fr_pres[self.simulation_index]))
-        self.rl_pres_label.setText('{0:.2f}'.format(self.rl_pres[self.simulation_index]))
-        self.rr_pres_label.setText('{0:.2f}'.format(self.rr_pres[self.simulation_index]))
+        self.fl_pres_label.setText('{}'.format(self.fl_pres[self.simulation_index]))
+        self.fr_pres_label.setText('{}'.format(self.fr_pres[self.simulation_index]))
+        self.rl_pres_label.setText('{}'.format(self.rl_pres[self.simulation_index]))
+        self.rr_pres_label.setText('{}'.format(self.rr_pres[self.simulation_index]))
 
     def __update_simulation_pressure_graphics__(self):
         """
