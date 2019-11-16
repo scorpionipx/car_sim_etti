@@ -696,7 +696,6 @@ class CarSimETTI(QMainWindow):
         self.__fps_task_started__ = True
         LOGGER.info('__fps_task__ started!')
         self.stop_sim_signal = False
-        sim_progress = -1
         old_simulation_progress = -1
         while not self.__stop_fps_task__:
             sleep(self.simulation_period)
