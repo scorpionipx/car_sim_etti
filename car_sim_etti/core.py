@@ -1,5 +1,6 @@
 import json
 import logging
+import numpy
 import sys
 import threading
 
@@ -13,6 +14,7 @@ from PyQt5.QtCore import Qt, QThread, pyqtSignal
 
 from car_sim_etti import settings, APP_SLUG
 from car_sim_etti.utils.gauge import AnalogGaugeWidget
+from car_sim_etti.utils.data_viewer import DataViewer, Signal as PlotterSignal
 from car_sim_etti.utils.generic import (
     NOT_AVAILABLE,
 
@@ -148,6 +150,8 @@ class CarSimETTI(QMainWindow):
         self.__stop_fps_task__ = False
 
         self.init_gui()
+        self.data_viewer = DataViewer()
+        self.data_viewer.show()
 
     def __reset_simulation_signals__(self):
         """__reset_simulation_signals__
@@ -238,6 +242,105 @@ class CarSimETTI(QMainWindow):
         self.simulation_stamps = len(self.fl_vel)
 
         LOGGER.info('Simulation profile successfully loaded!')
+
+        velocity_plot_signals = []
+
+        fl_vel_p_signal_data = numpy.zeros(self.simulation_stamps)
+        for index, val in enumerate(self.fl_vel):
+            fl_vel_p_signal_data[index] = val
+
+        fl_vel_p_signal = PlotterSignal(
+            label='FL_SPEED',
+            color='#ff8000',
+            data=fl_vel_p_signal_data
+        )
+        velocity_plot_signals.append(fl_vel_p_signal)
+
+        fr_vel_p_signal_data = numpy.zeros(self.simulation_stamps)
+        for index, val in enumerate(self.fr_vel):
+            fr_vel_p_signal_data[index] = val
+
+        fr_vel_p_signal = PlotterSignal(
+            label='FR_SPEED',
+            color='#848000',
+            data=fr_vel_p_signal_data
+        )
+        velocity_plot_signals.append(fr_vel_p_signal)
+
+        rl_vel_p_signal_data = numpy.zeros(self.simulation_stamps)
+        for index, val in enumerate(self.rl_vel):
+            rl_vel_p_signal_data[index] = val
+
+        rl_vel_p_signal = PlotterSignal(
+            label='RL_SPEED',
+            color='#bb4f66',
+            data=rl_vel_p_signal_data
+        )
+        velocity_plot_signals.append(rl_vel_p_signal)
+
+        rr_vel_p_signal_data = numpy.zeros(self.simulation_stamps)
+        for index, val in enumerate(self.rr_vel):
+            rr_vel_p_signal_data[index] = val
+
+        rr_vel_p_signal = PlotterSignal(
+            label='RR_SPEED',
+            color='#09dd66',
+            data=rr_vel_p_signal_data
+        )
+        velocity_plot_signals.append(rr_vel_p_signal)
+        
+        pressure_plot_signals = []
+
+        fl_pres_p_signal_data = numpy.zeros(self.simulation_stamps)
+        for index, val in enumerate(self.fl_pres):
+            fl_pres_p_signal_data[index] = val
+
+        fl_pres_p_signal = PlotterSignal(
+            label='FL_PRES',
+            color='#ff8000',
+            data=fl_pres_p_signal_data
+        )
+        pressure_plot_signals.append(fl_pres_p_signal)
+
+        fr_pres_p_signal_data = numpy.zeros(self.simulation_stamps)
+        for index, val in enumerate(self.fr_pres):
+            fr_pres_p_signal_data[index] = val
+
+        fr_pres_p_signal = PlotterSignal(
+            label='FR_PRES',
+            color='#848000',
+            data=fr_pres_p_signal_data
+        )
+        pressure_plot_signals.append(fr_pres_p_signal)
+
+        rl_pres_p_signal_data = numpy.zeros(self.simulation_stamps)
+        for index, val in enumerate(self.rl_pres):
+            rl_pres_p_signal_data[index] = val
+
+        rl_pres_p_signal = PlotterSignal(
+            label='RL_PRES',
+            color='#bb4f66',
+            data=rl_pres_p_signal_data
+        )
+        pressure_plot_signals.append(rl_pres_p_signal)
+
+        rr_pres_p_signal_data = numpy.zeros(self.simulation_stamps)
+        for index, val in enumerate(self.rr_pres):
+            rr_pres_p_signal_data[index] = val
+
+        rr_pres_p_signal = PlotterSignal(
+            label='RR_PRES',
+            color='#09dd66',
+            data=rr_pres_p_signal_data
+        )
+        pressure_plot_signals.append(rr_pres_p_signal)
+
+        try:
+            self.data_viewer.init_speed_plotter(velocity_plot_signals)
+            self.data_viewer.init_pressure_plotter(pressure_plot_signals)
+        except Exception as exception:
+            LOGGER.error(exception)
+
         return True
 
     def __get_file__(self):
@@ -436,7 +539,7 @@ class CarSimETTI(QMainWindow):
         simulation_progress_label_secondary.show()
 
         self.simulation_progress_pbar = QtWidgets.QProgressBar(self)
-        self.simulation_progress_pbar.setGeometry(350, 10, 280, 20)
+        self.simulation_progress_pbar.setGeometry(350, 10, 280, 10)
         self.simulation_progress_pbar.setOrientation(Qt.Horizontal)
         self.simulation_progress_pbar.setMinimum(0)
         self.simulation_progress_pbar.setMaximum(100)
@@ -471,6 +574,8 @@ class CarSimETTI(QMainWindow):
             self.__update_simulation_velocity__()
             self.__update_simulation_pressure__()
             self.__update_simulation_pressure_graphics__()
+            self.data_viewer.speed_plotter.display_data(self.simulation_index)
+            self.data_viewer.pressure_plotter.display_data(self.simulation_index)
 
     def start_simulation(self):
         if not self.simulation_profile:
@@ -638,6 +743,8 @@ class CarSimETTI(QMainWindow):
                 counter += period
                 if counter >= 3:
                     break
+            self.data_viewer.__prepare_for_closing__()
+            self.data_viewer.close()
             event.accept()
         else:
             event.ignore()
