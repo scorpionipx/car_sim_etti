@@ -343,6 +343,15 @@ def __get_fps_growth__(sampling_period, time_base):
     growth = 1
 
     if sampling_period == 0.01:
+        if time_base == 8:
+            fps = 25
+            growth = 32
+        if time_base == 4:
+            fps = 25
+            growth = 16
+        if time_base == 2:
+            fps = 25
+            growth = 8
         if time_base == 1:
             fps = 25
             growth = 4

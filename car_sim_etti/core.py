@@ -229,6 +229,8 @@ class CarSimETTI(QMainWindow):
 
         self.abs_ref = self.simulation_profile[SIGNAL_ABS_REF]
 
+        LOGGER.info('MAX SPEED: {}km/h'.format(max(self.abs_ref)))
+
         self.fl_vel = self.simulation_profile[SIGNAL_FL_VEL]
         self.fr_vel = self.simulation_profile[SIGNAL_FR_VEL]
         self.rl_vel = self.simulation_profile[SIGNAL_RL_VEL]
@@ -388,10 +390,14 @@ class CarSimETTI(QMainWindow):
         self.stop_sim_profile_button.show()
 
         self.time_base_combo_box = QtWidgets.QComboBox(self)
+        self.time_base_combo_box.addItem('8x')
+        self.time_base_combo_box.addItem('4x')
+        self.time_base_combo_box.addItem('2x')
         self.time_base_combo_box.addItem('1x')
         self.time_base_combo_box.addItem('0.5x')
         self.time_base_combo_box.addItem('0.25x')
         self.time_base_combo_box.addItem('0.1x')
+        self.time_base_combo_box.setCurrentIndex(3)
         self.time_base_combo_box.move(100, 50)
         self.time_base_combo_box.show()
         self.time_base_combo_box.currentTextChanged.connect(self.update_time_base)
@@ -535,16 +541,16 @@ class CarSimETTI(QMainWindow):
 
         simulation_progress_label_secondary = QtWidgets.QLabel(self)
         simulation_progress_label_secondary.setText('Simulation progress')
-        simulation_progress_label_secondary.move(100, 110)
+        simulation_progress_label_secondary.move(20, 545)
         simulation_progress_label_secondary.show()
 
         self.simulation_progress_pbar = QtWidgets.QProgressBar(self)
-        self.simulation_progress_pbar.setGeometry(350, 10, 280, 10)
+        self.simulation_progress_pbar.setGeometry(350, 10, 780, 10)
         self.simulation_progress_pbar.setOrientation(Qt.Horizontal)
         self.simulation_progress_pbar.setMinimum(0)
         self.simulation_progress_pbar.setMaximum(100)
         self.simulation_progress_pbar.setValue(0)
-        self.simulation_progress_pbar.move(100, 140)
+        self.simulation_progress_pbar.move(20, 575)
         self.simulation_progress_pbar.show()
 
     def update_time_base(self, value):
