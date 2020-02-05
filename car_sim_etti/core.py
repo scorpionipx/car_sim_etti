@@ -1,6 +1,7 @@
 import json
 import logging
 import numpy
+import os
 import sys
 import threading
 
@@ -42,6 +43,10 @@ LOGGER = logging.getLogger(APP_SLUG)
 
 
 SIMULATION_THREAD_TIMEOUT = 300  # seconds, same as 5 minutes
+RELEASED = False
+
+CURRENT_DIR = os.path.dirname(__file__)
+SIM_PROFILES_PATH = os.path.join(CURRENT_DIR, 'static', 'simulation_profiles', 'ABS')
 
 
 class SimulationThread(QThread):
@@ -108,8 +113,10 @@ class CarSimETTI(QMainWindow):
         # widgets generic
         self.load_sim_profile_button = None
         self.start_sim_profile_button = None
+        self.load_and_start_sim_profile_button = None
         self.stop_sim_profile_button = None
         self.time_base_combo_box = None
+        self.simulation_profile_label = None
         
         # widgets simulation
         self.fl_vel_label = None
@@ -134,6 +141,12 @@ class CarSimETTI(QMainWindow):
         self.simulation_progress_pbar = None
         self.simulation_progress = -1
         self.simulation_progress_old = -1
+
+        self.set_target_speed_slider = None
+        self.target_speed_label = None
+        self.set_road_friction_coefficient_slider = None
+        self.road_friction_coefficient_label = None
+        self.split_road_friction_coefficient_checkbox = None
 
         self.simulation_thread = None
         self.simulation_profile = None
@@ -183,18 +196,21 @@ class CarSimETTI(QMainWindow):
         self.rl_pres = []
         self.rr_pres = []
 
-    def load_simulation_profile(self):
+    def load_simulation_profile(self, specific_file=None):
         """load_simulation_profile
 
             Load signals values from simulation profile file.
         :return: process result
         :rtype: bool
         """
-        file = self.__get_file__()
-        if not file:
-            warning = 'Invalid simulation profile file! {}'.format(file)
-            LOGGER.warning(warning)
-            return False
+        if specific_file is None:
+            file = self.__get_file__()
+            if not file:
+                warning = 'Invalid simulation profile file! {}'.format(file)
+                LOGGER.warning(warning)
+                return False
+        else:
+            file = specific_file
 
         LOGGER.info('Loading simulation profile: {}'.format(file))
 
@@ -371,23 +387,87 @@ class CarSimETTI(QMainWindow):
         self.load_sim_profile_button.setText('Load sim profile')
         # noinspection PyTypeChecker
         self.load_sim_profile_button.clicked.connect(self.load_simulation_profile)
-        self.load_sim_profile_button.move(100, 10)
+        self.load_sim_profile_button.move(400, 60)
         self.load_sim_profile_button.show()
+        if RELEASED:
+            self.load_sim_profile_button.hide()
 
-        self.start_sim_profile_button = QtWidgets.QPushButton(self)
-        self.start_sim_profile_button.setText('Start sim profile')
-        # noinspection PyTypeChecker
-        self.start_sim_profile_button.clicked.connect(self.start_simulation)
-        self.start_sim_profile_button.move(250, 10)
-        self.start_sim_profile_button.show()
+        x = 20
+        y = 15
+        simulation_profile_label = QtWidgets.QLabel(self)
+        simulation_profile_label.setText('ABS SIMULATION PROFILE')
+        simulation_profile_label.resize(simulation_profile_label.sizeHint())
+        simulation_profile_label.move(x, y)
+        simulation_profile_label.show()
 
-        self.stop_sim_profile_button = QtWidgets.QPushButton(self)
-        self.stop_sim_profile_button.setText('Stop sim')
-        # noinspection PyTypeChecker
-        self.stop_sim_profile_button.clicked.connect(self.stop_simulation)
-        self.stop_sim_profile_button.move(250, 50)
-        self.stop_sim_profile_button.setEnabled(False)
-        self.stop_sim_profile_button.show()
+        self.set_target_speed_slider = QtWidgets.QSlider(self)
+        self.set_target_speed_slider.setOrientation(Qt.Horizontal)
+        self.set_target_speed_slider.setMinimum(50)
+        self.set_target_speed_slider.setMaximum(130)
+        self.set_target_speed_slider.setValue(50)
+        self.set_target_speed_slider.valueChanged.connect(self.__update_target_speed__)
+        self.set_target_speed_slider.move(x, y + 30)
+        self.set_target_speed_slider.show()
+
+        static_target_speed_label = QtWidgets.QLabel(self)
+        static_target_speed_label.setText('target speed:')
+        static_target_speed_label.resize(static_target_speed_label.sizeHint())
+        static_target_speed_label.move(x, y + 15)
+        static_target_speed_label.show()
+
+        self.target_speed_label = QtWidgets.QLabel(self)
+        self.target_speed_label.setText('50km/h')
+        self.target_speed_label.resize(static_target_speed_label.size())
+        self.target_speed_label.move(x + static_target_speed_label.width() + 2, static_target_speed_label.y())
+        self.target_speed_label.show()
+
+        x = 20
+        y = 65
+        self.set_road_friction_coefficient_slider = QtWidgets.QSlider(self)
+        self.set_road_friction_coefficient_slider.setOrientation(Qt.Horizontal)
+        self.set_road_friction_coefficient_slider.setMinimum(3)
+        self.set_road_friction_coefficient_slider.setMaximum(9)
+        self.set_road_friction_coefficient_slider.valueChanged.connect(self.__update_road_friction_coefficient__)
+        self.set_road_friction_coefficient_slider.move(x, y + 30)
+        self.set_road_friction_coefficient_slider.show()
+        
+        static_road_friction_coefficient_label = QtWidgets.QLabel(self)
+        static_road_friction_coefficient_label.setText('road friction coefficient:')
+        static_road_friction_coefficient_label.resize(static_road_friction_coefficient_label.sizeHint())
+        static_road_friction_coefficient_label.move(x, y + 15)
+        static_road_friction_coefficient_label.show()
+
+        self.road_friction_coefficient_label = QtWidgets.QLabel(self)
+        self.road_friction_coefficient_label.setText('0.3')
+        self.road_friction_coefficient_label.resize(static_road_friction_coefficient_label.size())
+        self.road_friction_coefficient_label.move(x + static_road_friction_coefficient_label.width() + 2,
+                                                  static_road_friction_coefficient_label.y())
+        self.road_friction_coefficient_label.show()
+
+        self.split_road_friction_coefficient_checkbox = QtWidgets.QCheckBox(self)
+        self.split_road_friction_coefficient_checkbox.setChecked(False)
+        self.split_road_friction_coefficient_checkbox.resize(self.split_road_friction_coefficient_checkbox.sizeHint())
+        self.split_road_friction_coefficient_checkbox.move(x + self.set_road_friction_coefficient_slider.width() + 5,
+                                                           self.set_road_friction_coefficient_slider.y() + 5)
+        self.split_road_friction_coefficient_checkbox.clicked.connect(self.__update_road_friction_coefficient_split__)
+        self.split_road_friction_coefficient_checkbox.show()
+
+        split_road_friction_coefficient_label = QtWidgets.QLabel(self)
+        split_road_friction_coefficient_label.setText('split')
+        split_road_friction_coefficient_label.resize(split_road_friction_coefficient_label.sizeHint())
+        split_road_friction_coefficient_label.move(self.split_road_friction_coefficient_checkbox.x() +
+                                                   self.split_road_friction_coefficient_checkbox.width() + 2,
+                                                   self.split_road_friction_coefficient_checkbox.y())
+        split_road_friction_coefficient_label.show()
+
+        x = 20
+        y = 130
+
+        time_base_label = QtWidgets.QLabel(self)
+        time_base_label.setText('time base:')
+        time_base_label.resize(time_base_label.sizeHint())
+        time_base_label.move(x, y)
+        time_base_label.show()
 
         self.time_base_combo_box = QtWidgets.QComboBox(self)
         self.time_base_combo_box.addItem('8x')
@@ -398,9 +478,45 @@ class CarSimETTI(QMainWindow):
         self.time_base_combo_box.addItem('0.25x')
         self.time_base_combo_box.addItem('0.1x')
         self.time_base_combo_box.setCurrentIndex(3)
-        self.time_base_combo_box.move(100, 50)
+        self.time_base_combo_box.resize(50, 20)
+        self.time_base_combo_box.move(x + time_base_label.width() + 2, y - 3)
         self.time_base_combo_box.show()
         self.time_base_combo_box.currentTextChanged.connect(self.update_time_base)
+
+        self.simulation_profile_label = QtWidgets.QLabel(self)
+        self.simulation_profile_label.setText('none'*15)
+        self.simulation_profile_label.resize(self.simulation_profile_label.sizeHint())
+        self.simulation_profile_label.setText('none')
+        self.simulation_profile_label.move(x, y + 50)
+        self.simulation_profile_label.show()
+        if RELEASED:
+            self.simulation_profile_label.hide()
+
+        self.start_sim_profile_button = QtWidgets.QPushButton(self)
+        self.start_sim_profile_button.setText('Start sim profile')
+        # noinspection PyTypeChecker
+        self.start_sim_profile_button.clicked.connect(self.start_simulation)
+        self.start_sim_profile_button.move(400, 10)
+        self.start_sim_profile_button.show()
+        if RELEASED:
+            self.start_sim_profile_button.hide()
+
+        self.load_and_start_sim_profile_button = QtWidgets.QPushButton(self)
+        self.load_and_start_sim_profile_button.setText('Start sim profile')
+        # noinspection PyTypeChecker
+        self.load_and_start_sim_profile_button.clicked.connect(self.load_and_start_simulation_profile)
+        self.load_and_start_sim_profile_button.move(180, 10)
+        self.load_and_start_sim_profile_button.resize(100, 60)
+        self.load_and_start_sim_profile_button.show()
+
+        self.stop_sim_profile_button = QtWidgets.QPushButton(self)
+        self.stop_sim_profile_button.setText('Stop sim')
+        # noinspection PyTypeChecker
+        self.stop_sim_profile_button.clicked.connect(self.stop_simulation)
+        self.stop_sim_profile_button.move(180, 20 + self.load_and_start_sim_profile_button.height())
+        self.stop_sim_profile_button.resize(100, 60)
+        self.stop_sim_profile_button.setEnabled(False)
+        self.stop_sim_profile_button.show()
 
         braking_system_overview_pixmap = QPixmap(BRAKING_SYSTEM_OVERVIEW_IMG)
         self.braking_system_overview_label = QtWidgets.QLabel(self)
@@ -534,11 +650,6 @@ class CarSimETTI(QMainWindow):
         self.speed_gauge.move(540, 15)
         self.speed_gauge.show()
 
-        self.simulation_progress_label = QtWidgets.QLabel(self)
-        self.simulation_progress_label.setText('~')
-        self.simulation_progress_label.move(10, 10)
-        self.simulation_progress_label.show()
-
         simulation_progress_label_secondary = QtWidgets.QLabel(self)
         simulation_progress_label_secondary.setText('Simulation progress')
         simulation_progress_label_secondary.move(20, 545)
@@ -552,6 +663,73 @@ class CarSimETTI(QMainWindow):
         self.simulation_progress_pbar.setValue(0)
         self.simulation_progress_pbar.move(20, 575)
         self.simulation_progress_pbar.show()
+
+    def load_and_start_simulation_profile(self):
+        """
+
+        :return:
+        """
+        LOGGER.info('Preparing profile...')
+        target_speed = int(self.set_target_speed_slider.value())
+        road_friction_coefficient = self.road_friction_coefficient_label.text()
+
+        if target_speed % 10 <= 2:
+            formatted_target_speed = target_speed // 10 * 10
+        else:
+            formatted_target_speed = (target_speed // 10 + 1) * 10
+
+        if '/' in road_friction_coefficient:
+            formatted_road_friction_coefficient = '38'
+        else:
+            formatted_road_friction_coefficient = road_friction_coefficient.replace('.', '')
+
+        if formatted_road_friction_coefficient == '07':  # WARNING
+            formatted_road_friction_coefficient = '06'
+
+        if formatted_road_friction_coefficient == '08':  # WARNING
+            formatted_road_friction_coefficient = '09'
+
+        target_sim_profile = '{}_{}.json'.format(formatted_target_speed, formatted_road_friction_coefficient)
+
+        profile = 'SPEED: {} -> {}\n'.format(target_speed, formatted_target_speed)
+        profile += 'RFC: {} -> {}\n'.format(road_friction_coefficient, formatted_road_friction_coefficient)
+        profile += 'SP: {}\n'.format(target_sim_profile)
+
+        LOGGER.info(profile)
+
+        target_sim_profile_path = os.path.join(SIM_PROFILES_PATH, target_sim_profile)
+        if not RELEASED:
+            self.simulation_profile_label.setText('{}'.format(target_sim_profile_path))
+        self.load_simulation_profile(specific_file=target_sim_profile_path)
+
+    def __update_target_speed__(self):
+        """
+
+        :return:
+        """
+        self.target_speed_label.setText('{}km/h'.format(self.set_target_speed_slider.value()))
+        sleep(0.01)
+
+    def __update_road_friction_coefficient__(self):
+        """
+
+        :return:
+        """
+        self.road_friction_coefficient_label.setText('{}'
+                                                     .format(self.set_road_friction_coefficient_slider.value() / 10))
+
+    def __update_road_friction_coefficient_split__(self):
+        """
+
+        :return:
+        """
+        if self.split_road_friction_coefficient_checkbox.isChecked():
+            self.set_road_friction_coefficient_slider.setEnabled(False)
+            self.road_friction_coefficient_label.setText('0.3/0.8')
+        else:
+            self.set_road_friction_coefficient_slider.setEnabled(True)
+            self.road_friction_coefficient_label.\
+                setText('{}'.format(self.set_road_friction_coefficient_slider.value() / 10))
 
     def update_time_base(self, value):
         self.simulation_time_base = float(value.replace('x', ''))
