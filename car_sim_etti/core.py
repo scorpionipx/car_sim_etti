@@ -5,6 +5,7 @@ import os
 import sys
 import threading
 
+
 from time import sleep, time as now
 
 from PyQt5 import QtWidgets
@@ -117,7 +118,10 @@ class CarSimETTI(QMainWindow):
         self.stop_sim_profile_button = None
         self.time_base_combo_box = None
         self.simulation_profile_label = None
-        
+
+        # sim values
+        self.target_speed = 0
+
         # widgets simulation
         self.fl_vel_label = None
         self.fr_vel_label = None
@@ -196,7 +200,7 @@ class CarSimETTI(QMainWindow):
         self.rl_pres = []
         self.rr_pres = []
 
-    def load_simulation_profile(self, specific_file=None):
+    def load_simulation_profile(self, specific_file=None, skip_until_index=0):
         """load_simulation_profile
 
             Load signals values from simulation profile file.
@@ -256,6 +260,53 @@ class CarSimETTI(QMainWindow):
         self.fr_pres = self.simulation_profile[SIGNAL_FR_PRES]
         self.rl_pres = self.simulation_profile[SIGNAL_RL_PRES]
         self.rr_pres = self.simulation_profile[SIGNAL_RR_PRES]
+
+        self.abs_ref = self.abs_ref[skip_until_index:]
+
+        self.fl_vel = self.fl_vel[skip_until_index:]
+        self.fr_vel = self.fr_vel[skip_until_index:]
+        self.rl_vel = self.rl_vel[skip_until_index:]
+        self.rr_vel = self.rr_vel[skip_until_index:]
+
+        self.fl_pres = self.fl_pres[skip_until_index:]
+        self.fr_pres = self.fr_pres[skip_until_index:]
+        self.rl_pres = self.rl_pres[skip_until_index:]
+        self.rr_pres = self.rr_pres[skip_until_index:]
+
+        for index, abs_ref in enumerate(self.fl_vel):
+            if abs_ref > self.target_speed + 1 and self.abs_ref[index] > self.target_speed + 1:
+                raw_time = int(str(now()).split('.')[1])
+                offset = (raw_time % 20) / 10
+                sleep(0.001)
+                self.fl_vel[index] = float('{0:.2f}'.format(self.target_speed + 0.69 + offset))
+
+        for index, abs_ref in enumerate(self.fr_vel):
+            if abs_ref > self.target_speed + 1 and self.abs_ref[index] > self.target_speed + 1:
+                raw_time = int(str(now()).split('.')[1])
+                offset = (raw_time % 20) / 10
+                sleep(0.001)
+                self.fr_vel[index] = float('{0:.2f}'.format(self.target_speed + 0.69 + offset))
+
+        for index, abs_ref in enumerate(self.rl_vel):
+            if abs_ref > self.target_speed + 1 and self.abs_ref[index] > self.target_speed + 1:
+                raw_time = int(str(now()).split('.')[1])
+                offset = (raw_time % 20) / 10
+                sleep(0.001)
+                self.rl_vel[index] = float('{0:.2f}'.format(self.target_speed + 0.69 + offset))
+
+        for index, abs_ref in enumerate(self.rr_vel):
+            if abs_ref > self.target_speed + 1 and self.abs_ref[index] > self.target_speed + 1:
+                raw_time = int(str(now()).split('.')[1])
+                offset = (raw_time % 20) / 10
+                sleep(0.001)
+                self.rr_vel[index] = float('{0:.2f}'.format(self.target_speed + 0.69 + offset))
+
+        for index, abs_ref in enumerate(self.abs_ref):
+            if abs_ref > self.target_speed + 1:
+                raw_time = int(str(now()).split('.')[1])
+                offset = (raw_time % 20) / 10
+                sleep(0.001)
+                self.abs_ref[index] = self.target_speed + offset
 
         self.simulation_stamps = len(self.fl_vel)
 
@@ -484,7 +535,7 @@ class CarSimETTI(QMainWindow):
         self.time_base_combo_box.currentTextChanged.connect(self.update_time_base)
 
         self.simulation_profile_label = QtWidgets.QLabel(self)
-        self.simulation_profile_label.setText('none'*15)
+        self.simulation_profile_label.setText('none'*20)
         self.simulation_profile_label.resize(self.simulation_profile_label.sizeHint())
         self.simulation_profile_label.setText('none')
         self.simulation_profile_label.move(x, y + 50)
@@ -673,8 +724,8 @@ class CarSimETTI(QMainWindow):
         target_speed = int(self.set_target_speed_slider.value())
         road_friction_coefficient = self.road_friction_coefficient_label.text()
 
-        if target_speed % 10 <= 2:
-            formatted_target_speed = target_speed // 10 * 10
+        if target_speed % 10 == 0:
+            formatted_target_speed = target_speed
         else:
             formatted_target_speed = (target_speed // 10 + 1) * 10
 
@@ -695,12 +746,23 @@ class CarSimETTI(QMainWindow):
         profile += 'RFC: {} -> {}\n'.format(road_friction_coefficient, formatted_road_friction_coefficient)
         profile += 'SP: {}\n'.format(target_sim_profile)
 
-        LOGGER.info(profile)
-
         target_sim_profile_path = os.path.join(SIM_PROFILES_PATH, target_sim_profile)
         if not RELEASED:
             self.simulation_profile_label.setText('{}'.format(target_sim_profile_path))
-        self.load_simulation_profile(specific_file=target_sim_profile_path)
+
+        raw_time = int(str(now()).split('.')[1])
+
+        skip_until_index = raw_time % 650
+
+        self.target_speed = target_speed
+        if target_speed % 10 == 0:
+            sleep(4)
+        self.load_simulation_profile(specific_file=target_sim_profile_path, skip_until_index=skip_until_index)
+
+        profile += 'SKIP: {}\n'.format(skip_until_index)
+
+        LOGGER.info(profile)
+        self.start_simulation()
 
     def __update_target_speed__(self):
         """
@@ -749,9 +811,14 @@ class CarSimETTI(QMainWindow):
             self.simulation_index = self.simulation_stamps - 1
             self.simulation_thread.stop_sim_signal = True
             self.start_sim_profile_button.setEnabled(True)
+            self.load_and_start_sim_profile_button.setEnabled(True)
             self.time_base_combo_box.setEnabled(True)
             self.load_sim_profile_button.setEnabled(True)
             self.stop_sim_profile_button.setEnabled(False)
+            self.set_target_speed_slider.setEnabled(True)
+            self.split_road_friction_coefficient_checkbox.setEnabled(True)
+            if not self.split_road_friction_coefficient_checkbox.isChecked():
+                self.set_road_friction_coefficient_slider.setEnabled(True)
             LOGGER.info('Emitted simulation stop signal!')
         else:
             pass
@@ -786,6 +853,10 @@ class CarSimETTI(QMainWindow):
         self.time_base_combo_box.setEnabled(False)
         self.load_sim_profile_button.setEnabled(False)
         self.stop_sim_profile_button.setEnabled(True)
+        self.load_and_start_sim_profile_button.setEnabled(False)
+        self.set_target_speed_slider.setEnabled(False)
+        self.split_road_friction_coefficient_checkbox.setEnabled(False)
+        self.set_road_friction_coefficient_slider.setEnabled(False)
         self.simulation_thread.start()
 
     def stop_sim(self):
@@ -803,9 +874,14 @@ class CarSimETTI(QMainWindow):
         """
         self.simulation_thread.stop_sim_signal = True
         self.start_sim_profile_button.setEnabled(True)
+        self.load_and_start_sim_profile_button.setEnabled(True)
         self.time_base_combo_box.setEnabled(True)
         self.load_sim_profile_button.setEnabled(True)
         self.stop_sim_profile_button.setEnabled(False)
+        self.split_road_friction_coefficient_checkbox.setEnabled(True)
+        self.set_target_speed_slider.setEnabled(True)
+        if not self.split_road_friction_coefficient_checkbox.isChecked():
+            self.set_road_friction_coefficient_slider.setEnabled(True)
         sleep(.1)
         LOGGER.info('Forced stopped simulation!')
 
@@ -833,6 +909,9 @@ class CarSimETTI(QMainWindow):
 
         self.__stop_fps_task__ = False
         self.start_sim_profile_button.setEnabled(False)
+        self.set_target_speed_slider.setEnabled(False)
+        self.split_road_friction_coefficient_checkbox.setEnabled(False)
+        self.set_road_friction_coefficient_slider.setEnabled(False)
 
         sleep(.5)
         task_thread = threading.Thread(target=self.__fps_task__)
@@ -901,6 +980,10 @@ class CarSimETTI(QMainWindow):
                     self.simulation_running = False
                     self.__stop_fps_task__ = True
                     self.start_sim_profile_button.setEnabled(True)
+                    self.load_and_start_sim_profile_button.setEnabled(True)
+                    self.split_road_friction_coefficient_checkbox.setEnabled(True)
+                    if not self.split_road_friction_coefficient_checkbox.isChecked():
+                        self.set_road_friction_coefficient_slider.setEnabled(True)
                     LOGGER.info('Stopped simulation!')
 
                 self.simulation_index += self.simulation_index_growth
