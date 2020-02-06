@@ -110,6 +110,8 @@ class CarSimETTI(QMainWindow):
         self.rl_pres = []
         self.rr_pres = []
 
+        self.wss_error = 'none'
+
         # widgets
         # widgets generic
         self.load_sim_profile_button = None
@@ -151,6 +153,11 @@ class CarSimETTI(QMainWindow):
         self.set_road_friction_coefficient_slider = None
         self.road_friction_coefficient_label = None
         self.split_road_friction_coefficient_checkbox = None
+
+        self.fl_wss_error_combo_box = None
+        self.fr_wss_error_combo_box = None
+        self.rl_wss_error_combo_box = None
+        self.rr_wss_error_combo_box = None
 
         self.simulation_thread = None
         self.simulation_profile = None
@@ -309,6 +316,94 @@ class CarSimETTI(QMainWindow):
                 self.abs_ref[index] = self.target_speed + offset
 
         self.simulation_stamps = len(self.fl_vel)
+
+        LOGGER.info('Treating WSS error: {}'.format(self.wss_error))
+        if self.wss_error == 'none':
+            pass
+        elif 'gnd' in self.wss_error:
+            for index in range(self.simulation_stamps):
+                raw_time = int(str(now()).split('.')[1])
+                offset = (raw_time % 169) / 100
+                press_l = 39.5 + (raw_time % 11) / 10
+                press_r = 39.5 + (raw_time % 9) / 10
+                sleep(0.0001)
+                if 'fl' in self.wss_error:
+                    self.fl_vel[index] = float('{0:.2f}'.format(offset))
+                    if self.fl_pres[index] > 5:
+                        self.fl_pres[index] = press_l
+                        self.fr_pres[index] = press_r
+                elif 'fr' in self.wss_error:
+                    self.fr_vel[index] = float('{0:.2f}'.format(offset))
+                    if self.fl_pres[index] > 5:
+                        self.fl_pres[index] = press_l
+                        self.fr_pres[index] = press_r
+                elif 'rl' in self.wss_error:
+                    self.rl_vel[index] = float('{0:.2f}'.format(offset))
+                    if self.rl_pres[index] > 5:
+                        self.rl_pres[index] = press_l
+                        self.rr_pres[index] = press_r
+                elif 'rr' in self.wss_error:
+                    self.rr_vel[index] = float('{0:.2f}'.format(offset))
+                    if self.rl_pres[index] > 5:
+                        self.rl_pres[index] = press_l
+                        self.rr_pres[index] = press_r
+
+        elif 'vcc' in self.wss_error:
+            for index in range(self.simulation_stamps):
+                raw_time = int(str(now()).split('.')[1])
+                offset = 253 + (raw_time % 20) / 10
+                press_l = 39.5 + (raw_time % 11) / 10
+                press_r = 39.5 + (raw_time % 9) / 10
+                sleep(0.0001)
+                if 'fl' in self.wss_error:
+                    self.fl_vel[index] = float('{0:.2f}'.format(offset))
+                    if self.fl_pres[index] > 5:
+                        self.fl_pres[index] = press_l
+                        self.fr_pres[index] = press_r
+                elif 'fr' in self.wss_error:
+                    self.fr_vel[index] = float('{0:.2f}'.format(offset))
+                    if self.fl_pres[index] > 5:
+                        self.fl_pres[index] = press_l
+                        self.fr_pres[index] = press_r
+                elif 'rl' in self.wss_error:
+                    self.rl_vel[index] = float('{0:.2f}'.format(offset))
+                    if self.rl_pres[index] > 5:
+                        self.rl_pres[index] = press_l
+                        self.rr_pres[index] = press_r
+                elif 'rr' in self.wss_error:
+                    self.rr_vel[index] = float('{0:.2f}'.format(offset))
+                    if self.rl_pres[index] > 5:
+                        self.rl_pres[index] = press_l
+                        self.rr_pres[index] = press_r
+
+        elif 'open' in self.wss_error:
+            for index in range(self.simulation_stamps):
+                raw_time = int(str(now()).split('.')[1])
+                offset = 10 + (raw_time % 235)
+                press_l = 39.5 + (raw_time % 11) / 10
+                press_r = 39.5 + (raw_time % 9) / 10
+                sleep(0.00069)
+                if 'fl' in self.wss_error:
+                    self.fl_vel[index] = float('{0:.2f}'.format(offset))
+                    if self.fl_pres[index] > 5:
+                        self.fl_pres[index] = press_l
+                        self.fr_pres[index] = press_r
+                elif 'fr' in self.wss_error:
+                    self.fr_vel[index] = float('{0:.2f}'.format(offset))
+                    if self.fl_pres[index] > 5:
+                        self.fl_pres[index] = press_l
+                        self.fr_pres[index] = press_r
+                elif 'rl' in self.wss_error:
+                    self.rl_vel[index] = float('{0:.2f}'.format(offset))
+                    if self.rl_pres[index] > 5:
+                        self.rl_pres[index] = press_l
+                        self.rr_pres[index] = press_r
+                elif 'rr' in self.wss_error:
+                    self.rr_vel[index] = float('{0:.2f}'.format(offset))
+                    if self.rl_pres[index] > 5:
+                        self.rl_pres[index] = press_l
+                        self.rr_pres[index] = press_r
+
 
         LOGGER.info('Simulation profile successfully loaded!')
 
@@ -534,6 +629,74 @@ class CarSimETTI(QMainWindow):
         self.time_base_combo_box.show()
         self.time_base_combo_box.currentTextChanged.connect(self.update_time_base)
 
+        self.fl_wss_error_combo_box = QtWidgets.QComboBox(self)
+        self.fl_wss_error_combo_box.addItem('none')
+        self.fl_wss_error_combo_box.addItem('gnd')
+        self.fl_wss_error_combo_box.addItem('vcc')
+        self.fl_wss_error_combo_box.addItem('open')
+        self.fl_wss_error_combo_box.setCurrentIndex(0)
+        self.fl_wss_error_combo_box.resize(50, 20)
+        self.fl_wss_error_combo_box.move(settings.FL_PRES_PBAR_X - 55, settings.FL_PRES_PBAR_Y + 70)
+        self.fl_wss_error_combo_box.show()
+        self.fl_wss_error_combo_box.currentTextChanged.connect(self.__update_wss_error__)
+
+        wss_error_label = QtWidgets.QLabel(self)
+        wss_error_label.setText('wss error:')
+        wss_error_label.resize(wss_error_label.sizeHint())
+        wss_error_label.move(self.fl_wss_error_combo_box.x(), self.fl_wss_error_combo_box.y() - 15)
+        wss_error_label.show()
+
+        self.fr_wss_error_combo_box = QtWidgets.QComboBox(self)
+        self.fr_wss_error_combo_box.addItem('none')
+        self.fr_wss_error_combo_box.addItem('gnd')
+        self.fr_wss_error_combo_box.addItem('vcc')
+        self.fr_wss_error_combo_box.addItem('open')
+        self.fr_wss_error_combo_box.setCurrentIndex(0)
+        self.fr_wss_error_combo_box.resize(50, 20)
+        self.fr_wss_error_combo_box.move(settings.FR_PRES_PBAR_X - 55, settings.FR_PRES_PBAR_Y + 70)
+        self.fr_wss_error_combo_box.show()
+        self.fr_wss_error_combo_box.currentTextChanged.connect(self.__update_wss_error__)
+
+        wss_error_label = QtWidgets.QLabel(self)
+        wss_error_label.setText('wss error:')
+        wss_error_label.resize(wss_error_label.sizeHint())
+        wss_error_label.move(self.fr_wss_error_combo_box.x(), self.fr_wss_error_combo_box.y() - 15)
+        wss_error_label.show()
+
+        self.rl_wss_error_combo_box = QtWidgets.QComboBox(self)
+        self.rl_wss_error_combo_box.addItem('none')
+        self.rl_wss_error_combo_box.addItem('gnd')
+        self.rl_wss_error_combo_box.addItem('vcc')
+        self.rl_wss_error_combo_box.addItem('open')
+        self.rl_wss_error_combo_box.setCurrentIndex(0)
+        self.rl_wss_error_combo_box.resize(50, 20)
+        self.rl_wss_error_combo_box.move(settings.RL_PRES_PBAR_X + 25, settings.RL_PRES_PBAR_Y + 70)
+        self.rl_wss_error_combo_box.show()
+        self.rl_wss_error_combo_box.currentTextChanged.connect(self.__update_wss_error__)
+
+        wss_error_label = QtWidgets.QLabel(self)
+        wss_error_label.setText('wss error:')
+        wss_error_label.resize(wss_error_label.sizeHint())
+        wss_error_label.move(self.rl_wss_error_combo_box.x(), self.rl_wss_error_combo_box.y() - 15)
+        wss_error_label.show()
+
+        self.rr_wss_error_combo_box = QtWidgets.QComboBox(self)
+        self.rr_wss_error_combo_box.addItem('none')
+        self.rr_wss_error_combo_box.addItem('gnd')
+        self.rr_wss_error_combo_box.addItem('vcc')
+        self.rr_wss_error_combo_box.addItem('open')
+        self.rr_wss_error_combo_box.setCurrentIndex(0)
+        self.rr_wss_error_combo_box.resize(50, 20)
+        self.rr_wss_error_combo_box.move(settings.RR_PRES_PBAR_X + 25, settings.RR_PRES_PBAR_Y + 70)
+        self.rr_wss_error_combo_box.show()
+        self.rr_wss_error_combo_box.currentTextChanged.connect(self.__update_wss_error__)
+
+        wss_error_label = QtWidgets.QLabel(self)
+        wss_error_label.setText('wss error:')
+        wss_error_label.resize(wss_error_label.sizeHint())
+        wss_error_label.move(self.rr_wss_error_combo_box.x(), self.rr_wss_error_combo_box.y() - 15)
+        wss_error_label.show()
+
         self.simulation_profile_label = QtWidgets.QLabel(self)
         self.simulation_profile_label.setText('none'*20)
         self.simulation_profile_label.resize(self.simulation_profile_label.sizeHint())
@@ -714,6 +877,55 @@ class CarSimETTI(QMainWindow):
         self.simulation_progress_pbar.setValue(0)
         self.simulation_progress_pbar.move(20, 575)
         self.simulation_progress_pbar.show()
+
+    def __update_wss_error__(self):
+        """
+
+        :return:
+        """
+        fl_wss_err = str(self.fl_wss_error_combo_box.currentText())
+        fr_wss_err = str(self.fr_wss_error_combo_box.currentText())
+        rl_wss_err = str(self.rl_wss_error_combo_box.currentText())
+        rr_wss_err = str(self.rr_wss_error_combo_box.currentText())
+
+        if fl_wss_err == 'none' and fr_wss_err == 'none' and rl_wss_err == 'none' and rr_wss_err == 'none':
+            self.wss_error = 'none'
+            self.fl_wss_error_combo_box.setEnabled(True)
+            self.fr_wss_error_combo_box.setEnabled(True)
+            self.rl_wss_error_combo_box.setEnabled(True)
+            self.rr_wss_error_combo_box.setEnabled(True)
+            LOGGER.info('wss err: {}'.format(self.wss_error))
+            return
+
+        if fl_wss_err != 'none':
+            self.wss_error = fl_wss_err + '_fl'
+            self.fl_wss_error_combo_box.setEnabled(True)
+            self.fr_wss_error_combo_box.setEnabled(False)
+            self.rl_wss_error_combo_box.setEnabled(False)
+            self.rr_wss_error_combo_box.setEnabled(False)
+
+        elif fr_wss_err != 'none':
+            self.wss_error = fr_wss_err + '_fr'
+            self.fl_wss_error_combo_box.setEnabled(False)
+            self.fr_wss_error_combo_box.setEnabled(True)
+            self.rl_wss_error_combo_box.setEnabled(False)
+            self.rr_wss_error_combo_box.setEnabled(False)
+
+        elif rl_wss_err != 'none':
+            self.wss_error = rl_wss_err + '_rl'
+            self.fl_wss_error_combo_box.setEnabled(False)
+            self.fr_wss_error_combo_box.setEnabled(False)
+            self.rl_wss_error_combo_box.setEnabled(True)
+            self.rr_wss_error_combo_box.setEnabled(False)
+
+        elif rr_wss_err != 'none':
+            self.wss_error = rr_wss_err + '_rr'
+            self.fl_wss_error_combo_box.setEnabled(False)
+            self.fr_wss_error_combo_box.setEnabled(False)
+            self.rl_wss_error_combo_box.setEnabled(False)
+            self.rr_wss_error_combo_box.setEnabled(True)
+
+        LOGGER.info('wss err: {}'.format(self.wss_error))
 
     def load_and_start_simulation_profile(self):
         """
