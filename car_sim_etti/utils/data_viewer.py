@@ -213,3 +213,85 @@ class DataViewer(QtWidgets.QMainWindow):
             self.pressure_plot_labels.append(label)
 
         self.pressure_plotter.init_signals(signals)
+
+
+class DataViewerFull(QtWidgets.QMainWindow):
+    """DataViewer
+
+    """
+
+    def __init__(self):
+        super(DataViewerFull, self).__init__()
+
+        self.plot_widget = None
+
+        self.init_gui()
+        self.plot_labels = []
+
+        self.plotter = Plotter(parent=self)
+        self.plotter.move(25, 25)
+        self.plotter.resize(self.width() - 150, self.height() - 50)
+
+        self.__main_window_close_event__ = False
+
+    def init_gui(self):
+        """
+
+        :return:
+        """
+        self.setGeometry(100 + settings.WINDOW_WIDTH, 200, settings.WINDOW_WIDTH, settings.WINDOW_HEIGHT)
+        self.setFixedSize(1200, 700)
+        self.setWindowTitle('Data full viewer')
+        self.setWindowIcon(QIcon(settings.WINDOWS_ICON_PATH))
+        self.setStyleSheet("QMainWindow {background: 'white';}")
+
+    def closeEvent(self, event):
+        """
+
+        :param event:
+        :return:
+        """
+        if self.__main_window_close_event__:
+            LOGGER.info('Closing data viewer...')
+            event.accept()
+        else:
+            QtWidgets.QMessageBox.question(self, 'Exit', "Please close main window!", QtWidgets.QMessageBox.Ok)
+            event.ignore()
+
+    def __prepare_for_closing__(self):
+        """__prepare_for_closing__
+
+        :return:
+        """
+        self.__main_window_close_event__ = True
+
+    def init_plotter(self, signals):
+        """
+
+        :param signals:
+        :return:
+        """
+        for plot_label in self.plot_labels:
+            plot_label.hide()
+
+        del self.speed_plot_labels
+        self.plot_labels = []
+
+        for index, signal in enumerate(signals):
+
+            c_label = QtWidgets.QLabel(parent=self)
+            c_label.move(self.plotter.x() + self.plotter.width() + 25,
+                         self.plotter.y() + 32 + index * 25)
+            c_label.setStyleSheet("QLabel { background-color : ~~color~~}; }".replace('~~color~~', signal.color))
+            c_label.resize(15, 15)
+            c_label.show()
+            self.plot_labels.append(c_label)
+
+            label = QtWidgets.QLabel(parent=self)
+            label.setText(signal.label)
+            label.move(self.plotter.x() + self.plotter.width() + 50,
+                       self.plotter.y() + 25 + index * 25)
+            label.show()
+            self.plot_labels.append(label)
+
+        self.plotter.init_signals(signals)

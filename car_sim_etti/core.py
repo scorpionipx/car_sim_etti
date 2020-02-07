@@ -10,13 +10,13 @@ from time import sleep, time as now
 
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QApplication, QMainWindow
-from PyQt5.QtGui import QIcon, QPixmap
+from PyQt5.QtGui import QIcon, QPixmap, QFont
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 
 
 from car_sim_etti import settings, APP_SLUG
 from car_sim_etti.utils.gauge import AnalogGaugeWidget
-from car_sim_etti.utils.data_viewer import DataViewer, Signal as PlotterSignal
+from car_sim_etti.utils.data_viewer import DataViewer, DataViewerFull, Signal as PlotterSignal
 from car_sim_etti.utils.generic import (
     NOT_AVAILABLE,
 
@@ -44,7 +44,7 @@ LOGGER = logging.getLogger(APP_SLUG)
 
 
 SIMULATION_THREAD_TIMEOUT = 300  # seconds, same as 5 minutes
-RELEASED = False
+RELEASED = True
 
 CURRENT_DIR = os.path.dirname(__file__)
 SIM_PROFILES_PATH = os.path.join(CURRENT_DIR, 'static', 'simulation_profiles', 'ABS')
@@ -176,6 +176,9 @@ class CarSimETTI(QMainWindow):
         self.init_gui()
         self.data_viewer = DataViewer()
         self.data_viewer.show()
+
+        self.data_viewer_full = DataViewerFull()
+        self.data_viewer_full.show()
 
     def __reset_simulation_signals__(self):
         """__reset_simulation_signals__
@@ -791,6 +794,11 @@ class CarSimETTI(QMainWindow):
         fl_pres_label_secondary.move(settings.FL_PRES_LABEL_X, settings.FL_PRES_LABEL_Y + 15)
         fl_pres_label_secondary.show()
 
+        fl_pres_label_secondary = QtWidgets.QLabel(self)
+        fl_pres_label_secondary.setText('FL')
+        fl_pres_label_secondary.move(settings.FL_PRES_LABEL_X, settings.FL_PRES_LABEL_Y + 30)
+        fl_pres_label_secondary.show()
+
         self.fr_pres_label = QtWidgets.QLabel(self)
         self.fr_pres_label.setText(NOT_AVAILABLE)
         self.fr_pres_label.move(settings.FR_PRES_LABEL_X, settings.FR_PRES_LABEL_Y)
@@ -799,6 +807,11 @@ class CarSimETTI(QMainWindow):
         fr_pres_label_secondary = QtWidgets.QLabel(self)
         fr_pres_label_secondary.setText('[bars]')
         fr_pres_label_secondary.move(settings.FR_PRES_LABEL_X, settings.FR_PRES_LABEL_Y + 15)
+        fr_pres_label_secondary.show()
+
+        fr_pres_label_secondary = QtWidgets.QLabel(self)
+        fr_pres_label_secondary.setText('FR')
+        fr_pres_label_secondary.move(settings.FR_PRES_LABEL_X, settings.FR_PRES_LABEL_Y + 30)
         fr_pres_label_secondary.show()
 
         self.rl_pres_label = QtWidgets.QLabel(self)
@@ -811,6 +824,11 @@ class CarSimETTI(QMainWindow):
         rl_pres_label_secondary.move(settings.RL_PRES_LABEL_X, settings.RL_PRES_LABEL_Y + 15)
         rl_pres_label_secondary.show()
 
+        rl_pres_label_secondary = QtWidgets.QLabel(self)
+        rl_pres_label_secondary.setText('RL')
+        rl_pres_label_secondary.move(settings.RL_PRES_LABEL_X, settings.RL_PRES_LABEL_Y + 30)
+        rl_pres_label_secondary.show()
+
         self.rr_pres_label = QtWidgets.QLabel(self)
         self.rr_pres_label.setText(NOT_AVAILABLE)
         self.rr_pres_label.move(settings.RR_PRES_LABEL_X, settings.RR_PRES_LABEL_Y)
@@ -819,6 +837,11 @@ class CarSimETTI(QMainWindow):
         rr_pres_label_secondary = QtWidgets.QLabel(self)
         rr_pres_label_secondary.setText('[bars]')
         rr_pres_label_secondary.move(settings.RR_PRES_LABEL_X, settings.RR_PRES_LABEL_Y + 15)
+        rr_pres_label_secondary.show()
+
+        rr_pres_label_secondary = QtWidgets.QLabel(self)
+        rr_pres_label_secondary.setText('RR')
+        rr_pres_label_secondary.move(settings.RR_PRES_LABEL_X, settings.RR_PRES_LABEL_Y + 30)
         rr_pres_label_secondary.show()
 
         self.fl_pres_pbar = QtWidgets.QProgressBar(self)
@@ -863,6 +886,12 @@ class CarSimETTI(QMainWindow):
         self.speed_gauge.resize(200, 200)
         self.speed_gauge.move(540, 15)
         self.speed_gauge.show()
+
+        speed_label = QtWidgets.QLabel(self)
+        speed_label.setText('km/h')
+        speed_label.setFont(QFont('SansSerif', 14))
+        speed_label.move(665, 175)
+        speed_label.show()
 
         simulation_progress_label_secondary = QtWidgets.QLabel(self)
         simulation_progress_label_secondary.setText('Simulation progress')
@@ -932,7 +961,9 @@ class CarSimETTI(QMainWindow):
 
         :return:
         """
+        sleep(.1)
         LOGGER.info('Preparing profile...')
+        sleep(.1)
         target_speed = int(self.set_target_speed_slider.value())
         road_friction_coefficient = self.road_friction_coefficient_label.text()
 
@@ -1024,6 +1055,7 @@ class CarSimETTI(QMainWindow):
             self.simulation_thread.stop_sim_signal = True
             self.start_sim_profile_button.setEnabled(True)
             self.load_and_start_sim_profile_button.setEnabled(True)
+            self.load_and_start_sim_profile_button.setText('Start sim profile')
             self.time_base_combo_box.setEnabled(True)
             self.load_sim_profile_button.setEnabled(True)
             self.stop_sim_profile_button.setEnabled(False)
@@ -1066,6 +1098,7 @@ class CarSimETTI(QMainWindow):
         self.load_sim_profile_button.setEnabled(False)
         self.stop_sim_profile_button.setEnabled(True)
         self.load_and_start_sim_profile_button.setEnabled(False)
+        self.load_and_start_sim_profile_button.setText('Running...')
         self.set_target_speed_slider.setEnabled(False)
         self.split_road_friction_coefficient_checkbox.setEnabled(False)
         self.set_road_friction_coefficient_slider.setEnabled(False)
@@ -1087,6 +1120,7 @@ class CarSimETTI(QMainWindow):
         self.simulation_thread.stop_sim_signal = True
         self.start_sim_profile_button.setEnabled(True)
         self.load_and_start_sim_profile_button.setEnabled(True)
+        self.load_and_start_sim_profile_button.setText('Start sim profile')
         self.time_base_combo_box.setEnabled(True)
         self.load_sim_profile_button.setEnabled(True)
         self.stop_sim_profile_button.setEnabled(False)
@@ -1193,6 +1227,7 @@ class CarSimETTI(QMainWindow):
                     self.__stop_fps_task__ = True
                     self.start_sim_profile_button.setEnabled(True)
                     self.load_and_start_sim_profile_button.setEnabled(True)
+                    self.load_and_start_sim_profile_button.setText('Start sim profile')
                     self.split_road_friction_coefficient_checkbox.setEnabled(True)
                     if not self.split_road_friction_coefficient_checkbox.isChecked():
                         self.set_road_friction_coefficient_slider.setEnabled(True)
@@ -1223,6 +1258,8 @@ class CarSimETTI(QMainWindow):
                     break
             self.data_viewer.__prepare_for_closing__()
             self.data_viewer.close()
+            self.data_viewer_full.__prepare_for_closing__()
+            self.data_viewer_full.close()
             event.accept()
         else:
             event.ignore()
