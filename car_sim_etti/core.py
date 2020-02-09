@@ -226,7 +226,7 @@ class CarSimETTI(QMainWindow):
         else:
             file = specific_file
 
-        LOGGER.info('Loading simulation profile: {}'.format(file))
+        # LOGGER.info('Loading simulation profile: {}'.format(file))
 
         try:
             file_handler = open(file, 'r')
@@ -259,7 +259,7 @@ class CarSimETTI(QMainWindow):
 
         self.abs_ref = self.simulation_profile[SIGNAL_ABS_REF]
 
-        LOGGER.info('MAX SPEED: {}km/h'.format(max(self.abs_ref)))
+        # LOGGER.info('MAX SPEED: {}km/h'.format(max(self.abs_ref)))
 
         self.fl_vel = self.simulation_profile[SIGNAL_FL_VEL]
         self.fr_vel = self.simulation_profile[SIGNAL_FR_VEL]
@@ -407,7 +407,6 @@ class CarSimETTI(QMainWindow):
                         self.rl_pres[index] = press_l
                         self.rr_pres[index] = press_r
 
-
         LOGGER.info('Simulation profile successfully loaded!')
 
         velocity_plot_signals = []
@@ -464,7 +463,7 @@ class CarSimETTI(QMainWindow):
 
         fl_pres_p_signal = PlotterSignal(
             label='FL_PRES',
-            color='#ff8000',
+            color='#64A36B',
             data=fl_pres_p_signal_data
         )
         pressure_plot_signals.append(fl_pres_p_signal)
@@ -475,7 +474,7 @@ class CarSimETTI(QMainWindow):
 
         fr_pres_p_signal = PlotterSignal(
             label='FR_PRES',
-            color='#848000',
+            color='#64A391',
             data=fr_pres_p_signal_data
         )
         pressure_plot_signals.append(fr_pres_p_signal)
@@ -486,7 +485,7 @@ class CarSimETTI(QMainWindow):
 
         rl_pres_p_signal = PlotterSignal(
             label='RL_PRES',
-            color='#bb4f66',
+            color='#648DA3',
             data=rl_pres_p_signal_data
         )
         pressure_plot_signals.append(rl_pres_p_signal)
@@ -497,14 +496,19 @@ class CarSimETTI(QMainWindow):
 
         rr_pres_p_signal = PlotterSignal(
             label='RR_PRES',
-            color='#09dd66',
+            color='#7164A3',
             data=rr_pres_p_signal_data
         )
         pressure_plot_signals.append(rr_pres_p_signal)
 
+        all_signals = []
+        all_signals.extend(velocity_plot_signals)
+        all_signals.extend(pressure_plot_signals)
+
         try:
             self.data_viewer.init_speed_plotter(velocity_plot_signals)
             self.data_viewer.init_pressure_plotter(pressure_plot_signals)
+            self.data_viewer_full.init_plotter(all_signals)
         except Exception as exception:
             LOGGER.error(exception)
 
@@ -1004,7 +1008,7 @@ class CarSimETTI(QMainWindow):
 
         profile += 'SKIP: {}\n'.format(skip_until_index)
 
-        LOGGER.info(profile)
+        # LOGGER.info(profile)
         self.start_simulation()
 
     def __update_target_speed__(self):
@@ -1056,6 +1060,7 @@ class CarSimETTI(QMainWindow):
             self.start_sim_profile_button.setEnabled(True)
             self.load_and_start_sim_profile_button.setEnabled(True)
             self.load_and_start_sim_profile_button.setText('Start sim profile')
+            self.data_viewer_full.enable_signal_check_boxes()
             self.time_base_combo_box.setEnabled(True)
             self.load_sim_profile_button.setEnabled(True)
             self.stop_sim_profile_button.setEnabled(False)
@@ -1071,6 +1076,7 @@ class CarSimETTI(QMainWindow):
             self.__update_simulation_pressure_graphics__()
             self.data_viewer.speed_plotter.display_data(self.simulation_index)
             self.data_viewer.pressure_plotter.display_data(self.simulation_index)
+            self.data_viewer_full.plotter.display_data(self.simulation_index)
 
     def start_simulation(self):
         if not self.simulation_profile:
@@ -1121,6 +1127,7 @@ class CarSimETTI(QMainWindow):
         self.start_sim_profile_button.setEnabled(True)
         self.load_and_start_sim_profile_button.setEnabled(True)
         self.load_and_start_sim_profile_button.setText('Start sim profile')
+        self.data_viewer_full.enable_signal_check_boxes()
         self.time_base_combo_box.setEnabled(True)
         self.load_sim_profile_button.setEnabled(True)
         self.stop_sim_profile_button.setEnabled(False)
@@ -1228,6 +1235,7 @@ class CarSimETTI(QMainWindow):
                     self.start_sim_profile_button.setEnabled(True)
                     self.load_and_start_sim_profile_button.setEnabled(True)
                     self.load_and_start_sim_profile_button.setText('Start sim profile')
+                    self.data_viewer_full.enable_signal_check_boxes()
                     self.split_road_friction_coefficient_checkbox.setEnabled(True)
                     if not self.split_road_friction_coefficient_checkbox.isChecked():
                         self.set_road_friction_coefficient_slider.setEnabled(True)

@@ -2,3 +2,5 @@
 venv/
 *.pyc
 car_sim_etti/logs/
+build/
+dist/

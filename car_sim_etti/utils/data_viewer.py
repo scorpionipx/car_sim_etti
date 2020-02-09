@@ -61,6 +61,7 @@ class Plotter(QtWidgets.QWidget):
         :type signals: list of Signal
         :return:
         """
+        # LOGGER.info('Initing {} signals!'.format(len(signals)))
         self.DATA_BUFFER_SIZE = 1000
         self.plot_widget.clear()
         self.plot_widget.setXRange(0, self.DATA_BUFFER_SIZE)
@@ -95,6 +96,22 @@ class Plotter(QtWidgets.QWidget):
 
         for plot_index, plot_curve in enumerate(self.plot_curves):
             plot_curve.setData(self.signals[plot_index].data[:max_index])
+
+    def display_signals(self, signals_enabled):
+        """
+
+        :param signals_enabled:
+        :return:
+        """
+        # LOGGER.info('display signals: {}'.format(signals_enabled))
+        # self.plot_widget.clear()
+        for plot_index, plot_curve in enumerate(self.plot_curves):
+            if signals_enabled[plot_index]:
+                # LOGGER.info('Plotting signal [{}/{}]...'.format(plot_index + 1, len(signals_enabled)))
+                plot_curve.setData(self.signals[plot_index].data)
+            else:
+                plot_curve.setData(None)
+                # LOGGER.info('Signal [{}/{}] skipped!'.format(plot_index + 1, len(signals_enabled)))
 
 
 class DataViewer(QtWidgets.QMainWindow):
@@ -231,6 +248,7 @@ class DataViewerFull(QtWidgets.QMainWindow):
         self.plotter = Plotter(parent=self)
         self.plotter.move(25, 25)
         self.plotter.resize(self.width() - 150, self.height() - 50)
+        self.plot_enable_check_box = []
 
         self.__main_window_close_event__ = False
 
@@ -271,13 +289,26 @@ class DataViewerFull(QtWidgets.QMainWindow):
         :param signals:
         :return:
         """
+        LOGGER.info('received {} signals'.format(len(signals)))
         for plot_label in self.plot_labels:
             plot_label.hide()
 
-        del self.speed_plot_labels
+        del self.plot_labels
         self.plot_labels = []
 
+        del self.plot_enable_check_box
+        self.plot_enable_check_box = []
+
         for index, signal in enumerate(signals):
+
+            plot_enable_check_box = QtWidgets.QCheckBox(parent=self)
+            plot_enable_check_box.setChecked(True)
+            plot_enable_check_box.resize(15, 15)
+            plot_enable_check_box.move(self.plotter.x() + self.plotter.width() + 10,
+                                       self.plotter.y() + 32 + index * 25)
+            plot_enable_check_box.setEnabled(False)
+            plot_enable_check_box.clicked.connect(self.display_partial_data)
+            plot_enable_check_box.show()
 
             c_label = QtWidgets.QLabel(parent=self)
             c_label.move(self.plotter.x() + self.plotter.width() + 25,
@@ -293,5 +324,29 @@ class DataViewerFull(QtWidgets.QMainWindow):
                        self.plotter.y() + 25 + index * 25)
             label.show()
             self.plot_labels.append(label)
+            self.plot_enable_check_box.append(plot_enable_check_box)
 
         self.plotter.init_signals(signals)
+
+    def enable_signal_check_boxes(self):
+        """
+
+        :return:
+        """
+        for cb in self.plot_enable_check_box:
+            cb.setEnabled(True)
+
+    def display_partial_data(self):
+        """
+
+        :return:
+        """
+        enabled_signals = []
+        for cb in self.plot_enable_check_box:
+            if cb.isChecked():
+                enabled_signals.append(True)
+            else:
+                enabled_signals.append(False)
+
+        # print(enabled_signals)
+        self.plotter.display_signals(enabled_signals)

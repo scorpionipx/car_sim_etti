@@ -1,5 +1,7 @@
 import logging
 import os
+import sys
+
 from time import gmtime, strftime
 
 from .version import __version__
@@ -13,7 +15,10 @@ STATION = os.environ['COMPUTERNAME']
 USER = os.getlogin()
 
 CURRENT_DIR = os.path.dirname(__file__)
-LOG_DIR = os.path.join(CURRENT_DIR, 'logs')
+if getattr(sys, 'frozen', False):
+    CURRENT_DIR = os.path.dirname(sys.executable)
+
+LOG_DIR = os.path.join(CURRENT_DIR, '{}_logs'.format(APP_SLUG))
 
 try:
     if not os.path.exists(LOG_DIR):
